@@ -1,0 +1,6 @@
+NonRepo/*
+*.o
+*.lib
+x64/*
+Debug/*
+*.vcxproj*

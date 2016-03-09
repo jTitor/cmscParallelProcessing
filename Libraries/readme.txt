@@ -1,0 +1,1 @@
+All external libraries go here; this is platform dependent, so typically only .a or .so files will exist in a submitted copy.
