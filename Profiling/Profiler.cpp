@@ -86,6 +86,6 @@ void Profiler::PrintAllCSV(FILE* output)
 	//Now display the data!
 	for(int i = 0; i < PC_COUNT; ++i) {
 		Seconds profileTime = profileTotalTimes[i];
-		fprintf(output, "%s,%f,%f\n", profileNames[i], profileTime, profileTime / totalTime);
+		fprintf(output, "%s,%e,%e\n", profileNames[i], profileTime, profileTime / totalTime);
 	}
 }
