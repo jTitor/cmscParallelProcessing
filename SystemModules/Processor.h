@@ -25,6 +25,7 @@ namespace Graphics
 		EnergyBuffer* energy;
 		SeamTracebackBuffer* seamTraceback;
 		RemoveMode removeMode;
+		Profiler& profiler;
 
 		void calcScharrAtPixel(signedSize_t x, signedSize_t y);
 		//void calcEnergyAtPixel(signedSize_t x, signedSize_t y);
@@ -32,13 +33,13 @@ namespace Graphics
 		/**
 		Recalculates energy around a removed seam.
 		*/
-		void calcSeamEnergy(size_t seamIdx, bool transpose);
+		void recalcSeamEnergy(size_t seamIdx, bool transpose);
 		void calcSeamCosts(bool transpose);
 		size_t findMinCostSeam(bool transpose);
 		SeamRemoveDirection removeSeam(size_t seamIdx, bool transpose);
 		void highlightSeam(LABColorBuffer& seamBuffer, size_t seamIdx, bool transpose);
 	public:
-		Processor(LABColorBuffer& pImage);
+		Processor(LABColorBuffer& pImage, Profiler& pProfiler);
 		~Processor();
 
 		/**

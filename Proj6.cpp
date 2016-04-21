@@ -3,6 +3,7 @@
 #include "StandardIncludes.h"
 #include "SystemModules/TestMacros.h"
 #include "SystemModules/Processor.h"
+#include "Profiling/Profiler.h"
 #include "Libraries/Graphics435.h"
 #include <stdio.h>
 #include <assert.h>
@@ -19,7 +20,7 @@ int main(int numArgs, char** args)
 	//Expecting format ./Proj6 (input path) (output path) (output_width) (output_height).
 	if (numArgs < 1 + 4)
 	{
-		printf("Syntax: ./Proj6 (input path) (output path) (output width) (output height)\n");
+		printf("%s\n", "Syntax: ./Proj6 (input path) (output path) (output width) (output height)");
 		return 0;
 	}
 	inPath = args[1];
@@ -42,22 +43,24 @@ int main(int numArgs, char** args)
 	//Check that the output dimensions are smaller than input.
 	if (rowsToRemove < 0 || colsToRemove < 0)
 	{
-		printf("main(): New dimensions are larger than original dimensions, aborting!\n");
+		printf("%s\n", "main(): New dimensions are larger than original dimensions, aborting!");
 		return 0;
 	}
 	if (rowsToRemove == 0 && colsToRemove == 0)
 	{
-		printf("main(): New dimensions are same as original dimensions, aborting!\n");
+		printf("%s\n", "main(): New dimensions are same as original dimensions, aborting!");
 		return 0;
 	}	
 	
 	//Do our work...
-	Processor* processor = new Processor(*image);
+	Profiler* profiler = new Profiler();
+	Processor* processor = new Processor(*image, *profiler);
 	processor->ProcessImage(rowsToRemove, colsToRemove);
 
 	WriteImageBuffer(*image, outPath);
 
 	//Release resources.
 	delete processor;
+	delete profiler;
 	return 0;
 }

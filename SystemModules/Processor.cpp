@@ -1,5 +1,6 @@
 #include "Processor.h"
 #include "../Math/IntVec2.h"
+#include "../Profiling/Profiler.h"
 
 using namespace Graphics;
 
@@ -101,7 +102,7 @@ void Processor::calcAllEnergy()
 	}
 }
 
-void Processor::calcSeamEnergy(size_t seamIdx, bool transpose)
+void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 {
 	//This is before the seam data is recalculated, so we still have the seam path.
 	//The image has had the seam removed, so we have the right intensities.
@@ -317,7 +318,7 @@ void Processor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool trans
 	}
 }
 
-Processor::Processor(LABColorBuffer& pImage) : image(pImage)
+Processor::Processor(LABColorBuffer& pImage) : image(pImage), profiler(pProfiler)
 {
 	//Derive other buffers from the given image buffer.
 	energy = new EnergyBuffer(pImage.Width(), pImage.Height());
@@ -359,7 +360,7 @@ void Processor::TestProcessImage()
 		removeSeam(targetSeamIdx, transpose);
 
 		//Now the image has been modified; recalculate the energy.
-		calcSeamEnergy(targetSeamIdx, transpose);
+		recalcSeamEnergy(targetSeamIdx, transpose);
 		//Seam traceback doesn't have to be updated since
 		//calcSeamCosts() must evaluate the entire image.
 
@@ -404,7 +405,9 @@ void Processor::TestProcessImage()
 void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
 	//Calculate the initial energy gradient of the image.
+	profiler.StartProfile(ProfileCode::PC_CALC_ALL_ENERGY);
 	calcAllEnergy();
+	profiler.EndProfile(ProfileCode::PC_CALC_ALL_ENERGY);
 
 #if defined(_DEBUG)
 	//Write the energy to output.
@@ -425,18 +428,27 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 		bool transpose = removeMode != REMOVE_ROWS;
 
 		//Find the cost of each seam in the image.
+		profiler.StartProfile(ProfileCode::PC_CALC_SEAM_COSTS);
 		calcSeamCosts(transpose);
+		profiler.EndProfile(ProfileCode::PC_CALC_SEAM_COSTS);
 		
 		//Remove minimum cost seam.
+		profiler.StartProfile(ProfileCode::PC_FIND_MIN_COST_SEAM);
 		size_t targetSeamIdx = findMinCostSeam(transpose);
+		profiler.EndProfile(ProfileCode::PC_FIND_MIN_COST_SEAM);
+		profiler.StartProfile(ProfileCode::PC_REMOVE_SEAM);
 		auto seamRemoveDirection = removeSeam(targetSeamIdx, transpose);
+		profiler.EndProfile(ProfileCode::PC_FIND_MIN_COST_SEAM);
 
-		//Now the image has been modified; recalculate the energy.
-		calcSeamEnergy(targetSeamIdx, transpose);
+		//Now the image has been modified; recalculate the energy near the removed seam.
+		profiler.StartProfile(ProfileCode::PC_RECALC_SEAM_ENERGY);
+		recalcSeamEnergy(targetSeamIdx, transpose);
+		profiler.EndProfile(ProfileCode::PC_RECALC_SEAM_ENERGY);
 		//Seam traceback doesn't have to be updated since
 		//calcSeamCosts() must evaluate the entire image.
 
 		//Update buffer dimensions.
+		profiler.StartProfile(ProfileCode::PC_BOUNDS_ADJUST);
 		rowsColsToRemove[removeMode] -= 1;
 		IntVec2 removeVec = IntVec2(0, 0);
 		if (removeMode == REMOVE_ROWS)
@@ -473,5 +485,6 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 			//If so, transpose at this point.
 			removeMode = oppositeMode;
 		}
+		profiler.EndProfile(ProfileCode::PC_BOUNDS_ADJUST);
 	}
 }

@@ -31,5 +31,5 @@ namespace Graphics {
 		Prints all profile data to a file as CSV data.
 		*/
 		void PrintAllCSV(FILE* output);
-	}
+	};
 }
