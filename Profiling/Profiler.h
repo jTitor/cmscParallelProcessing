@@ -1,5 +1,6 @@
 #pragma once
 #include "../Time/Clock.h"
+#include <cstdio>
 
 namespace Graphics {
 	

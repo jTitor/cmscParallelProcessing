@@ -318,7 +318,7 @@ void Processor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool trans
 	}
 }
 
-Processor::Processor(LABColorBuffer& pImage) : image(pImage), profiler(pProfiler)
+Processor::Processor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
 {
 	//Derive other buffers from the given image buffer.
 	energy = new EnergyBuffer(pImage.Width(), pImage.Height());

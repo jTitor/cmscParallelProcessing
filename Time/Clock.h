@@ -15,7 +15,7 @@ namespace Graphics
 		Seconds startTime;
 		Seconds currentTime, previousTime;
 	public:
-		static Seconds GetCurrentTime();
+		static Seconds GetCurrentTimestamp();
 	
 		Clock();
 		/**

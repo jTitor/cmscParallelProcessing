@@ -3,4 +3,5 @@ NonRepo/*
 *.lib
 x64/*
 Debug/*
-*.vcxproj*
+**/*.sdf
+**/*.opensdf

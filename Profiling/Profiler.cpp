@@ -1,6 +1,16 @@
 #include "Profiler.h"
+#include <cassert>
 
 using namespace Graphics;
+
+static char* profileNames[] = {
+	"Calc. All Energy",
+	"Calc. Seam Costs",
+	"Find Min. Cost Seam",
+	"Remove Seam",
+	"Recalc Image Energy",
+	"Adjust Boundaries"
+	};
 
 Profiler::Profiler()
 {
@@ -24,7 +34,7 @@ Profiler::~Profiler()
 void Profiler::StartProfile(ProfileCode category)
 {
 	assert(category < PC_COUNT);
-	profileLastStartTimes[category] = Clock::GetCurrentTime();
+	profileLastStartTimes[category] = Clock::GetCurrentTimestamp();
 }
 
 void Profiler::EndProfile(ProfileCode category)
@@ -32,7 +42,7 @@ void Profiler::EndProfile(ProfileCode category)
 	//Category should be in bounds and already had StartProfile called on it.
 	assert(category < PC_COUNT && profileLastStartTimes[category] >= 0);
 	//Get the elapsed time.
-	auto currTime = Clock::GetCurrentTime();
+	auto currTime = Clock::GetCurrentTimestamp();
 	//Add that to the category total.
 	profileTotalTimes[category] += currTime - profileLastStartTimes[category];
 }

@@ -13,7 +13,7 @@ const double nanosecondsInSeconds = 1000.0 * microsecondsInSeconds;
 
 using namespace Graphics;
 
-Seconds Clock::GetCurrentTime()
+Seconds Clock::GetCurrentTimestamp()
 {
 	//platform dependent!
 	Seconds result = 0;
@@ -47,14 +47,14 @@ Seconds Clock::GetCurrentTime()
 	castTime /= nanosecondsInSeconds;
 	result = (Seconds)castTime;
 #else
-	static_assert(false, "Unrecognized platform; implement clockGetCurrentTime for this platform!");
+	static_assert(false, "Unrecognized platform; implement clockGetCurrentTimestamp for this platform!");
 #endif
 	return result;
 }
 
 Clock::Clock()
 {
-	startTime = GetCurrentTime();
+	startTime = GetCurrentTimestamp();
 	currentTime = startTime;
 	previousTime = currentTime;
 }
@@ -72,5 +72,5 @@ Seconds Clock::TotalTime() const
 void Clock::Tick()
 {
 	previousTime = currentTime;
-	currentTime = GetCurrentTime();
+	currentTime = GetCurrentTimestamp();
 }

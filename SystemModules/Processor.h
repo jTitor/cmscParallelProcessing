@@ -1,6 +1,7 @@
 #pragma once
 #include "../StandardIncludes.h"
 #include "BufferSpecializations.h"
+#include "../Profiling/Profiler.h"
 
 namespace Graphics
 {
