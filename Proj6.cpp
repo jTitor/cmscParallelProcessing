@@ -59,8 +59,19 @@ int main(int numArgs, char** args)
 
 	WriteImageBuffer(*image, outPath);
 
+	//Display performance results.
 	printf("%s\n", "Resize complete, displaying profile data:");
 	profiler->PrintAll();
+	//Also save them out to CSV.
+	const char* profilePath = "profileData.csv";
+	printf("Saving profile data to %s...\n", profilePath);
+	FILE* profileFile = fopen(profilePath, "a+");
+	if (!profileFile) {
+		printf("Couldn't open %s! Didn't save profile data!", profilePath);
+	}
+	else {
+		profiler->PrintAllCSV(profileFile);
+	}
 
 	//Release resources.
 	delete processor;

@@ -454,14 +454,14 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 		if (removeMode == REMOVE_ROWS)
 		{
 #if defined(_DEBUG)
-			printf("Processor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			//printf("Processor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			removeVec = IntVec2(0, 1);
 		}
 		else
 		{
 #if defined(_DEBUG)
-			printf("Processor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			//printf("Processor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			removeVec = IntVec2(1, 0);
 		}
