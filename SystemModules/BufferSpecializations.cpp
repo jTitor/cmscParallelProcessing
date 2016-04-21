@@ -10,10 +10,14 @@ void doWrite(CImg<double>& outBuffer, const char* outPath)
 	{
 		outBuffer.save_jpeg(outPath);
 	}
-	//Default to .png.
-	else
+	if (strstr(outPath, "png"))
 	{
 		outBuffer.save_png(outPath);
+	}
+	//Default to .bmp.
+	else
+	{
+		outBuffer.save_bmp(outPath);
 	}
 }
 

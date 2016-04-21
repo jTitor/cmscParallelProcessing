@@ -59,6 +59,9 @@ int main(int numArgs, char** args)
 
 	WriteImageBuffer(*image, outPath);
 
+	printf("%s\n", "Resize complete, displaying profile data:");
+	profiler->PrintAll();
+
 	//Release resources.
 	delete processor;
 	delete profiler;

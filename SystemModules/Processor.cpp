@@ -336,9 +336,9 @@ Processor::~Processor()
 void Processor::TestProcessImage()
 {
 	printf("Processor::TestProcessImage(): Testing seam finding\n");
-	WriteImageBuffer(image, "unmodified.png");
+	WriteImageBuffer(image, "unmodified.bmp");
 	calcAllEnergy();
-	WriteEnergyBuffer(*energy, "energyBufferStart.png");
+	WriteEnergyBuffer(*energy, "energyBufferStart.bmp");
 	//Highlight a row, then highlight a column.
 	size_t rowsColsToRemove[2] = { 1, 1 };
 	LABColorBuffer seamBuffer = LABColorBuffer(image.Width(), image.Height());
@@ -352,7 +352,7 @@ void Processor::TestProcessImage()
 
 		calcSeamCosts(transpose);
 		//Write out the calculated seams.
-		WriteTracebackBuffer(*seamTraceback, "seamTraceback.png");
+		WriteTracebackBuffer(*seamTraceback, "seamTraceback.bmp");
 
 		//Remove minimum cost seam.
 		size_t targetSeamIdx = findMinCostSeam(transpose);
@@ -396,10 +396,10 @@ void Processor::TestProcessImage()
 		}
 	}
 	//Write out the seam findings.
-	WriteImageBuffer(seamBuffer, "markedSeams.png");
+	WriteImageBuffer(seamBuffer, "markedSeams.bmp");
 
 	//Print out the image.
-	WriteImageBuffer(image, "imageTwoSeamsRemoved.png");
+	WriteImageBuffer(image, "imageTwoSeamsRemoved.bmp");
 }
 
 void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
@@ -411,7 +411,7 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 
 #if defined(_DEBUG)
 	//Write the energy to output.
-	WriteEnergyBuffer(*energy, "energyBuffer.png");
+	WriteEnergyBuffer(*energy, "energyBuffer.bmp");
 #endif
 
 	//How many rows to remove?
