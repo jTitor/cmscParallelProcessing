@@ -13,7 +13,7 @@ const double nanosecondsInSeconds = 1000.0 * microsecondsInSeconds;
 
 using namespace Graphics;
 
-Seconds Clock::clockGetCurrentTime()
+Seconds Clock::GetCurrentTime()
 {
 	//platform dependent!
 	Seconds result = 0;
@@ -54,7 +54,7 @@ Seconds Clock::clockGetCurrentTime()
 
 Clock::Clock()
 {
-	startTime = clockGetCurrentTime();
+	startTime = GetCurrentTime();
 	currentTime = startTime;
 	previousTime = currentTime;
 }
@@ -72,5 +72,5 @@ Seconds Clock::TotalTime() const
 void Clock::Tick()
 {
 	previousTime = currentTime;
-	currentTime = clockGetCurrentTime();
+	currentTime = GetCurrentTime();
 }

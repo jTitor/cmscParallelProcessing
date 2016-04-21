@@ -14,9 +14,9 @@ namespace Graphics
 	private:
 		Seconds startTime;
 		Seconds currentTime, previousTime;
-	protected:
-		Seconds clockGetCurrentTime();
 	public:
+		static Seconds GetCurrentTime();
+	
 		Clock();
 		/**
 		TODO: description

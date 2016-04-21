@@ -403,6 +403,7 @@ void Processor::TestProcessImage()
 
 void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
+	//Calculate the initial energy gradient of the image.
 	calcAllEnergy();
 
 #if defined(_DEBUG)
@@ -423,6 +424,7 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 	{
 		bool transpose = removeMode != REMOVE_ROWS;
 
+		//Find the cost of each seam in the image.
 		calcSeamCosts(transpose);
 		
 		//Remove minimum cost seam.
