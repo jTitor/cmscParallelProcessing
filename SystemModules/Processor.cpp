@@ -1,6 +1,7 @@
 #include "Processor.h"
 #include "../Math/IntVec2.h"
 #include "../Profiling/Profiler.h"
+#include <omp.h>
 
 using namespace Graphics;
 
@@ -88,10 +89,11 @@ void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 
 void Processor::calcAllEnergy()
 {
+#pragma omp parallel for
 	//Get energy on all pixels :
-	for (size_t x = 0; x < energy->Width(); ++x)
+	for (int x = 0; x < energy->Width(); ++x)
 	{
-		for (size_t y = 0; y < energy->Height(); ++y)
+		for (int y = 0; y < energy->Height(); ++y)
 		{
 			//Calculate horizontal and vertical gradient.
 			// (Optional)smooth the gradients.
@@ -104,6 +106,8 @@ void Processor::calcAllEnergy()
 
 void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 {
+	//TODO: parallelize this.
+
 	//This is before the seam data is recalculated, so we still have the seam path.
 	//The image has had the seam removed, so we have the right intensities.
 
@@ -153,7 +157,8 @@ void Processor::calcSeamCosts(bool transpose)
 
 	//Solve pixels at left edge first.
 	//They'll just have energy.
-	for (size_t i = 0; i < bottomEdge; ++i)
+#pragma omp parallel for
+	for (int i = 0; i < bottomEdge; ++i)
 	{
 		pixelPos = (-seamUp)*i;
 		auto pixel = seamTraceback->WritablePixelAt(pixelPos);
@@ -162,9 +167,12 @@ void Processor::calcSeamCosts(bool transpose)
 	}
 
 	//Now solve the pixels ahead of them.
+	//For each column (can't parallelize this):
 	for (size_t i = 1; i < rightEdge; ++i)
 	{
-		for (size_t j = 0; j < bottomEdge; ++j)
+#pragma omp parallel for
+		//For each row (can parallelize this?):
+		for (int j = 0; j < bottomEdge; ++j)
 		{
 			pixelPos = seamRight*i - seamUp*j;
 			auto pixel = seamTraceback->WritablePixelAt(pixelPos);
@@ -211,6 +219,7 @@ size_t Processor::findMinCostSeam(bool transpose)
 	size_t minIdx = 0;
 	EnergyT minSeamCost = FLT_MAX;
 
+	//TODO: Is this parallelizable under the server's OpenMP version?
 	//For each pixel at the edge:
 	for (size_t i = 0; i < scanLen; ++i)
 	{
@@ -248,6 +257,8 @@ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transp
 	size_t midpoint = (transpose ? image.Height() : image.Width()) / 2;
 	removeDirection = seamIdx < midpoint ? REMOVE_DIRECTION_UP : REMOVE_DIRECTION_DOWN;
 	ptrdiff_t directionFactor = removeDirection == REMOVE_DIRECTION_UP ? 1 : -1;
+
+	//TODO: parallelize this
 
 	//For each pixel P in the seam:
 	while (currSeamElem->TracebackDirection != SEAM_TB_END)
