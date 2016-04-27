@@ -314,7 +314,7 @@ extern "C" {
 // (see methods 'CImg<T>::{load,save}_jpeg()').
 #ifdef cimg_use_jpeg
 extern "C" {
-#include "jpeglib.h"
+#include "jpeglib/jpeglib.h"
 #include "setjmp.h"
 }
 #endif
