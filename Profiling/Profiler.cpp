@@ -1,6 +1,8 @@
 #include "Profiler.h"
 #include <cassert>
+#include <cstdio>
 
+using namespace std;
 using namespace Graphics;
 
 static char* profileNames[] = {

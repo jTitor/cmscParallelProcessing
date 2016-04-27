@@ -1,6 +1,9 @@
 #pragma once
 #include "../StandardIncludes.h"
 #include "../Math/IntVec2.h"
+#include <cstring>
+
+using namespace std;
 
 namespace Graphics
 {
