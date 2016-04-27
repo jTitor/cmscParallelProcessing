@@ -4,8 +4,8 @@
 //for the specified format.
 //Windows is acting crazy,
 //so these are both disabled by default and only BMPs can be loaded.
-#define cimg_use_jpeg 0
-#define cimg_use_png 0
+#undef cimg_use_jpeg
+#undef cimg_use_png
 
 #include "graphics435/slIO.H"
 #include "graphics435/slVector.H"

@@ -80,6 +80,9 @@
 #include <ctime>
 #include <exception>
 
+#undef cimg_use_png
+#undef cimg_use_jpeg
+
 // Detect/configure OS variables.
 //
 // Define 'cimg_OS' to: '0' for an unknown OS (will try to minize library dependencies).

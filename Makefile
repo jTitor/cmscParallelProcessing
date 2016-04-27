@@ -4,7 +4,7 @@ CPP_FILES := $(shell find . -name '*.cpp')
 #$(wildcard *.cpp)
 OBJDIR = obj
 OBJ_FILES = $(CPP_FILES:%.cpp=%.o)#$(CPP_FILES:.cpp=.o)
-CC_FLAGS = -w --std=c++0x -L./Libraries -lstdc++ -lm -lpthread -lrt -ljpeg -lpng #GL seems to have a very old version of libpng
+CC_FLAGS = -w --std=c++0x -L./Libraries -lstdc++ -lm -lpthread -lrt #GL seems to have a very old version of libpng
 OBJ_FLAGS = $(CC_FLAGS)
 
 all: $(EXE)
