@@ -5,7 +5,7 @@
 
 namespace Graphics
 {
-	class Processor
+	class CUDAProcessor
 	{
 	private:
 		enum RemoveMode
@@ -39,10 +39,10 @@ namespace Graphics
 		size_t findMinCostSeam(bool transpose);
 		SeamRemoveDirection removeSeam(size_t seamIdx, bool transpose);
 		void highlightSeam(LABColorBuffer& seamBuffer, size_t seamIdx, bool transpose);
-		void doProcessImage(size_t numRowsToRemove, size_t numColsToRemove);
+		void doProcessImage(size_t numRowsToRemove, size_t numColsToRemove, size_t numCores);
 	public:
-		Processor(LABColorBuffer& pImage, Profiler& pProfiler);
-		~Processor();
+		CUDAProcessor(LABColorBuffer& pImage, Profiler& pProfiler);
+		~CUDAProcessor();
 
 		/**
 		Performs seam cutting on an image.

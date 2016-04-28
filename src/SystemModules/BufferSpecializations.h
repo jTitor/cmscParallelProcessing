@@ -1,5 +1,6 @@
 #pragma once
 #include "../Primitives/ImgBuffer.h"
+#include "../Primitives/CUDAImgBuffer.h"
 #include "SeamTracebackElem.h"
 #include "../Libraries/Graphics435.h"
 
@@ -14,4 +15,8 @@ namespace Graphics
 	void WriteTracebackBuffer(SeamTracebackBuffer& tracebackBuffer, const char* outPath);
 
 	LABColorBuffer* LoadImageBuffer(const char* inPath);
+
+	typedef CUDAImgBuffer<Vec3> CUDALABColorBuffer;
+	typedef CUDAImgBuffer<EnergyT> CUDAEnergyBuffer;
+	typedef CUDAImgBuffer<SeamTracebackElem> CUDASeamTracebackBuffer;
 }

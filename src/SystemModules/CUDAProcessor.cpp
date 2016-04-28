@@ -36,13 +36,13 @@ __device__ static void followSeam(IntVec2* outVec, SeamTracebackDirection direct
 		*outVec += seamUp + seamLeft;
 		break;
 	default:
-		assert(false && "Processor::removeSeam(): Seam data is corrupt!");
+		assert(false && "CUDAProcessor::removeSeam(): Seam data is corrupt!");
 		abort();
 		break;
 	}
 }
 
-__device__ void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
+__device__ void CUDAProcessor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 {
 	//Unclear - can we filter in place?
 
@@ -92,24 +92,15 @@ __device__ void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 	*pixel = sqrtf(horizGradientSquared.SqrMag() + vertGradientSquared.SqrMag());
 }
 
-__device__ void Processor::calcAllEnergy()
+__global__ void CUDAProcessor::calcAllEnergy()
 {
-#pragma omp parallel for
-	//Get energy on all pixels :
-	for (int x = 0; x < energy->Width(); ++x)
-	{
-		for (int y = 0; y < energy->Height(); ++y)
-		{
-			//Calculate horizontal and vertical gradient.
-			// (Optional)smooth the gradients.
-			// Run energy function given gradients.
-			//calcEnergyAtPixel(x, y);
-			calcScharrAtPixel(x, y);
-		}
-	}
+	//Get the energy at this block's pixel.
+	int x = blockIdx.x;
+	int y = blockIdx.x; //TODO
+	calcScharrAtPixel(x, y);
 }
 
-__device__ void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
+__device__ void CUDAProcessor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 {
 	//TODO: parallelize this.
 
@@ -153,7 +144,7 @@ __device__ void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 	}
 }
 
-__device__ void Processor::calcSeamCosts(bool transpose)
+__device__ void CUDAProcessor::calcSeamCosts(bool transpose)
 {
 	IntVec2 pixelPos = IntVec2::Zero();
 
@@ -218,7 +209,7 @@ __device__ void Processor::calcSeamCosts(bool transpose)
 	}
 }
 
-__device__ size_t Processor::findMinCostSeam(bool transpose)
+__device__ size_t CUDAProcessor::findMinCostSeam(bool transpose)
 {
 	IntVec2 currPos = IntVec2(!transpose ? image.Width() - 1 : 0,
 		!transpose ? 0 : image.Height() - 1);
@@ -247,7 +238,7 @@ __device__ size_t Processor::findMinCostSeam(bool transpose)
 	return minIdx;
 }
 
-__device__ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transpose)
+__device__ CUDAProcessor::SeamRemoveDirection CUDAProcessor::removeSeam(size_t seamIdx, bool transpose)
 {
 	SeamRemoveDirection removeDirection = REMOVE_DIRECTION_DOWN;
 	//Figure out constants given transpose mode:
@@ -305,21 +296,14 @@ __device__ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, 
 	return removeDirection;
 }
 
-__global__ void Processor::doProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
+void CUDAProcessor::doProcessImage(size_t numRowsToRemove, size_t numColsToRemove, size_t numCores)
 {
 	//Note how many threads we'll be using.
-#pragma omp parallel
-	{
-		int numThreads = omp_get_num_threads();
-#pragma omp single
-		{
-			printf("Processor::ProcessImage(): OMP using %d threads\n", numThreads);
-		}
-	}
+	std::printf("CUDAProcessor::ProcessImage(): Using %d cores\n", numCores);
 
 	//Calculate the initial energy gradient of the image.
 	profiler.StartProfile(ProfileCode::PC_CALC_ALL_ENERGY);
-	calcAllEnergy();
+	calcAllEnergy<<<numCores, 1>>>();
 	profiler.EndProfile(ProfileCode::PC_CALC_ALL_ENERGY);
 
 #if defined(_DEBUG)
@@ -334,7 +318,7 @@ __global__ void Processor::doProcessImage(size_t numRowsToRemove, size_t numCols
 	//Start by removing rows.
 	RemoveMode removeMode = numRowsToRemove > 0 ? REMOVE_ROWS : REMOVE_COLS;
 
-	printf("Processor::ProcessImage(): Removing %d rows and %d columns\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+	std::printf("CUDAProcessor::ProcessImage(): Removing %d rows and %d columns\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 	//While you have too many rows/columns:
 	while (rowsColsToRemove[REMOVE_ROWS] > 0 || rowsColsToRemove[REMOVE_COLS] > 0)
 	{
@@ -367,14 +351,14 @@ __global__ void Processor::doProcessImage(size_t numRowsToRemove, size_t numCols
 		if (removeMode == REMOVE_ROWS)
 		{
 #if defined(_DEBUG)
-			//printf("Processor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			//printf("CUDAProcessor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			removeVec = IntVec2(0, 1);
 		}
 		else
 		{
 #if defined(_DEBUG)
-			//printf("Processor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			//printf("CUDAProcessor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			removeVec = IntVec2(1, 0);
 		}
@@ -402,30 +386,41 @@ __global__ void Processor::doProcessImage(size_t numRowsToRemove, size_t numCols
 	}
 }
 
-Processor::Processor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
+CUDAProcessor::CUDAProcessor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
 {
 	//Derive other buffers from the given image buffer.
-	EnergyBuffer* energyMem = 
-	energy = new EnergyBuffer(pImage.Width(), pImage.Height());
-	seamTraceback = new SeamTracebackBuffer(pImage.Width(), pImage.Height());
+	EnergyBuffer* energyMem = new EnergyBuffer(pImage.Width(), pImage.Height());
+	SeamTracebackBuffer* seamBufferMem = new SeamTracebackBuffer(pImage.Width(), pImage.Height());
+	cudaMalloc((void**)&energy, sizeof(energyMem));
+
+	delete energyMem;
+	delete seamBufferMem;
 	removeMode = REMOVE_ROWS;
 }
 
-Processor::~Processor()
+CUDAProcessor::~CUDAProcessor()
 {
 	delete seamTraceback;
 	delete energy;
 }
 
-void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
+void CUDAProcessor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
-	//Create GPU-local buffers.
+	//Create GPU-local buffers:
+	//Copy of the image.
+	CUDALABColorBuffer cudaImage;
+	//Energy buffer.
+	CUDAEnergyBuffer cudaEnergy;
+	//Seam traceback.
+	CUDASeamTracebackBuffer cudaSeamTraceback;
+
 	//Copy to those buffers.
+	cudaImage.CopyFromHostBuffer(image);
 
 	//Do the actual work.
 	//Should probably lookup how many blocks
 	//the device has available first.
-	doProcessImage<<<512, 1>>>(numRowsToRemove, numColsToRemove);
+	doProcessImage(numRowsToRemove, numColsToRemove, numCores);
 
 	//Release buffers.
 }
