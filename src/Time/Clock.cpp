@@ -31,10 +31,9 @@ Seconds Clock::GetCurrentTimestamp()
 	//We aren't running before 1970, so we're good!
 	//For now, we don't care about resolution.
 	//Just sum up the seconds and nanoseconds.
-	double seconds = (double)time.tv_sec;
-	double nanosecondsAsSeconds = ((double)time.tv_nsec) / nanosecondsInSeconds;
-	seconds += nanosecondsInSeconds;
-	result = (Seconds)seconds;
+	double secondsAsNanoseconds = (double)time.tv_sec * nanosecondsInSeconds;
+	secondsAsNanoseconds += (double)time.tv_nsec;
+	result = (Seconds)(secondsAsNanoseconds / nanosecondsInSeconds);
 #elif defined(__APPLE__)
 	//Get absolute time.
 	uint64_t time = mach_absolute_time();
