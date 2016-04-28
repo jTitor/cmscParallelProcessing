@@ -63,9 +63,6 @@
     <ClCompile Include="SystemModules\OMPProcessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SystemModules\CUDAProcessor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Proj6.h">
@@ -135,9 +132,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SystemModules\OMPProcessor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SystemModules\CUDAProcessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

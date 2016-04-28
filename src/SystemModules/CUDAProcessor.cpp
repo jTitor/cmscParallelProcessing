@@ -2,10 +2,15 @@
 #include "../Math/IntVec2.h"
 #include "../Profiling/Profiler.h"
 #include <omp.h>
+#include <new>
+#include <cstdlib>
+#include <cstdio>
+#include <cuda_runtime.h>
 
+using namespace std;
 using namespace Graphics;
 
-static int wrap(signedSize_t x, signedSize_t mod)
+__device__ static int wrap(signedSize_t x, signedSize_t mod)
 {
 	if (x >= 0)
 	{
@@ -15,7 +20,7 @@ static int wrap(signedSize_t x, signedSize_t mod)
 	return mod + (x % mod);
 }
 
-static void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool transpose)
+__device__ static void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool transpose)
 {
 	IntVec2 seamUp = IntVec2(!transpose ? 0 : -1, !transpose ? -1 : 0);
 	IntVec2 seamLeft = IntVec2(!transpose ? -1 : 0, !transpose ? 0 : -1);
@@ -37,7 +42,7 @@ static void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool t
 	}
 }
 
-void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
+__device__ void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 {
 	//Unclear - can we filter in place?
 
@@ -87,7 +92,7 @@ void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 	*pixel = sqrtf(horizGradientSquared.SqrMag() + vertGradientSquared.SqrMag());
 }
 
-void Processor::calcAllEnergy()
+__device__ void Processor::calcAllEnergy()
 {
 #pragma omp parallel for
 	//Get energy on all pixels :
@@ -104,7 +109,7 @@ void Processor::calcAllEnergy()
 	}
 }
 
-void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
+__device__ void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 {
 	//TODO: parallelize this.
 
@@ -148,7 +153,7 @@ void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 	}
 }
 
-void Processor::calcSeamCosts(bool transpose)
+__device__ void Processor::calcSeamCosts(bool transpose)
 {
 	IntVec2 pixelPos = IntVec2::Zero();
 
@@ -213,7 +218,7 @@ void Processor::calcSeamCosts(bool transpose)
 	}
 }
 
-size_t Processor::findMinCostSeam(bool transpose)
+__device__ size_t Processor::findMinCostSeam(bool transpose)
 {
 	IntVec2 currPos = IntVec2(!transpose ? image.Width() - 1 : 0,
 		!transpose ? 0 : image.Height() - 1);
@@ -242,7 +247,7 @@ size_t Processor::findMinCostSeam(bool transpose)
 	return minIdx;
 }
 
-Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transpose)
+__device__ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transpose)
 {
 	SeamRemoveDirection removeDirection = REMOVE_DIRECTION_DOWN;
 	//Figure out constants given transpose mode:
@@ -300,139 +305,7 @@ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transp
 	return removeDirection;
 }
 
-void Processor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool transpose)
-{
-	//Figure out constants given transpose mode:
-	//For getting seam start.
-	//For moving along seam.
-	IntVec2 seamUp = IntVec2(!transpose ? 0 : -1, !transpose ? -1 : 0);
-	IntVec2 seamLeft = IntVec2(!transpose ? -1 : 0, !transpose ? 0 : -1);
-
-	//Each pixel in the seam gets removed.
-	//Turn the index into actual X/Y coordinates.
-	IntVec2 seamPos = IntVec2(!transpose ? image.Width() - 1 : 0, 
-		!transpose ? 0 : image.Height() - 1);
-	seamPos += (-seamUp)*seamIdx;
-
-	const SeamTracebackElem* currSeamElem = seamTraceback->PixelAt(seamPos);
-	bool dropDrawn = false;
-	int i = 0;
-	//For each pixel P in the seam:
-	while (currSeamElem->TracebackDirection != SEAM_TB_END)
-	{
-
-		//Highlight the seam pixel in the highlight buffer.
-		buffer.SetPixelAt(seamPos, Vec3(50, 100, 100));
-		//Draw all pixels below the seam.
-		IntVec2 pixelToCopyPos = seamPos;
-		IntVec2 nextPixelPos = pixelToCopyPos - seamUp;
-		while (image.IsInBounds(pixelToCopyPos) && image.IsInBounds(nextPixelPos))
-		{
-			//P.value = P'.value
-			*buffer.WritablePixelAt(pixelToCopyPos) = Vec3(50 + 50*((float)i / (float)image.Width()), -100, 100);
-				
-			//Move to the next pixel.
-			pixelToCopyPos -= seamUp;
-			nextPixelPos -= seamUp;
-		}
-
-		//Get the next pixel on the seam.
-		followSeam(&seamPos, currSeamElem->TracebackDirection, transpose);
-
-		if (!image.IsInBounds(seamPos)) {
-			break;
-		}
-
-		currSeamElem = seamTraceback->PixelAt(seamPos);
-		++i;
-	}
-}
-
-Processor::Processor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
-{
-	//Derive other buffers from the given image buffer.
-	energy = new EnergyBuffer(pImage.Width(), pImage.Height());
-	seamTraceback = new SeamTracebackBuffer(pImage.Width(), pImage.Height());
-	removeMode = REMOVE_ROWS;
-}
-
-Processor::~Processor()
-{
-	delete seamTraceback;
-	delete energy;
-}
-
-//Highlights a row and column seam.
-void Processor::TestProcessImage()
-{
-	printf("Processor::TestProcessImage(): Testing seam finding\n");
-	WriteImageBuffer(image, "unmodified.bmp");
-	calcAllEnergy();
-	WriteEnergyBuffer(*energy, "energyBufferStart.bmp");
-	//Highlight a row, then highlight a column.
-	size_t rowsColsToRemove[2] = { 1, 1 };
-	LABColorBuffer seamBuffer = LABColorBuffer(image.Width(), image.Height());
-
-	RemoveMode removeMode = rowsColsToRemove[REMOVE_ROWS] > 0 ? REMOVE_ROWS : REMOVE_COLS;
-
-	//While you have too many rows/columns:
-	while (rowsColsToRemove[REMOVE_ROWS] > 0 || rowsColsToRemove[REMOVE_COLS] > 0)
-	{
-		bool transpose = removeMode != REMOVE_ROWS;
-
-		calcSeamCosts(transpose);
-		//Write out the calculated seams.
-		WriteTracebackBuffer(*seamTraceback, "seamTraceback.bmp");
-
-		//Remove minimum cost seam.
-		size_t targetSeamIdx = findMinCostSeam(transpose);
-		highlightSeam(seamBuffer, targetSeamIdx, transpose);
-		removeSeam(targetSeamIdx, transpose);
-
-		//Now the image has been modified; recalculate the energy.
-		recalcSeamEnergy(targetSeamIdx, transpose);
-		//Seam traceback doesn't have to be updated since
-		//calcSeamCosts() must evaluate the entire image.
-
-		//Update buffer dimensions.
-		rowsColsToRemove[removeMode] -= 1;
-		if (removeMode == REMOVE_ROWS)
-		{
-#if defined(_DEBUG)
-			printf("Processor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
-#endif
-			image.SetHeight(image.Height() - 1);
-			energy->SetHeight(energy->Height() - 1);
-			seamTraceback->SetHeight(seamTraceback->Height() - 1);
-			seamBuffer.SetHeight(seamBuffer.Height() - 1);
-		}
-		else
-		{
-#if defined(_DEBUG)
-			printf("Processor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
-#endif
-			image.SetWidth(image.Width() - 1);
-			energy->SetWidth(energy->Width() - 1);
-			seamTraceback->SetWidth(seamTraceback->Width() - 1);
-			seamBuffer.SetWidth(seamBuffer.Width() - 1);
-		}
-
-		//Check the other count - do we need to transpose?
-		RemoveMode oppositeMode = (RemoveMode)((removeMode + 1) % REMOVE_MODE_COUNT);
-		if (rowsColsToRemove[oppositeMode] > 0)
-		{
-			//If so, transpose at this point.
-			removeMode = oppositeMode;
-		}
-	}
-	//Write out the seam findings.
-	WriteImageBuffer(seamBuffer, "markedSeams.bmp");
-
-	//Print out the image.
-	WriteImageBuffer(image, "imageTwoSeamsRemoved.bmp");
-}
-
-void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
+__global__ void Processor::doProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
 	//Note how many threads we'll be using.
 #pragma omp parallel
@@ -456,7 +329,7 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 
 	//How many rows to remove?
 	//How many columns to remove?
-	size_t rowsColsToRemove[2] = {numRowsToRemove, numColsToRemove};
+	size_t rowsColsToRemove[2] = { numRowsToRemove, numColsToRemove };
 
 	//Start by removing rows.
 	RemoveMode removeMode = numRowsToRemove > 0 ? REMOVE_ROWS : REMOVE_COLS;
@@ -471,7 +344,7 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 		profiler.StartProfile(ProfileCode::PC_CALC_SEAM_COSTS);
 		calcSeamCosts(transpose);
 		profiler.EndProfile(ProfileCode::PC_CALC_SEAM_COSTS);
-		
+
 		//Remove minimum cost seam.
 		profiler.StartProfile(ProfileCode::PC_FIND_MIN_COST_SEAM);
 		size_t targetSeamIdx = findMinCostSeam(transpose);
@@ -527,4 +400,32 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 		}
 		profiler.EndProfile(ProfileCode::PC_BOUNDS_ADJUST);
 	}
+}
+
+Processor::Processor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
+{
+	//Derive other buffers from the given image buffer.
+	EnergyBuffer* energyMem = 
+	energy = new EnergyBuffer(pImage.Width(), pImage.Height());
+	seamTraceback = new SeamTracebackBuffer(pImage.Width(), pImage.Height());
+	removeMode = REMOVE_ROWS;
+}
+
+Processor::~Processor()
+{
+	delete seamTraceback;
+	delete energy;
+}
+
+void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
+{
+	//Create GPU-local buffers.
+	//Copy to those buffers.
+
+	//Do the actual work.
+	//Should probably lookup how many blocks
+	//the device has available first.
+	doProcessImage<<<512, 1>>>(numRowsToRemove, numColsToRemove);
+
+	//Release buffers.
 }

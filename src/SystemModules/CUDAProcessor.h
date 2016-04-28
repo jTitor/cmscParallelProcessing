@@ -39,6 +39,7 @@ namespace Graphics
 		size_t findMinCostSeam(bool transpose);
 		SeamRemoveDirection removeSeam(size_t seamIdx, bool transpose);
 		void highlightSeam(LABColorBuffer& seamBuffer, size_t seamIdx, bool transpose);
+		void doProcessImage(size_t numRowsToRemove, size_t numColsToRemove);
 	public:
 		Processor(LABColorBuffer& pImage, Profiler& pProfiler);
 		~Processor();
