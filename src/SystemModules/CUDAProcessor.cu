@@ -444,5 +444,11 @@ void CUDAProcessor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 	//Do the actual work.
 	//Should probably lookup how many blocks
 	//the device has available first.
+	cudaDeviceProp deviceProps = { 0 };
+	if (cudaGetDeviceProperties(&deviceProps, 0) != cudaSuccess) {
+		printf("%s\n", "CUDAProcessor::ProcessImage(): Couldn't get info from device, aborting!");
+		return;
+	}
+	size_t numCores = deviceProps.multiProcessorCount;
 	doProcessImage(numRowsToRemove, numColsToRemove, numCores);
 }
