@@ -151,7 +151,7 @@ __device__ void CUDAProcessor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 	}
 }
 
-__global__ void CUDAProcessor::calcSeamCosts(bool transpose)
+__global__ void CUDAProcessor::resetSeamStart(bool transpose)
 {
 	IntVec2 pixelPos = IntVec2::Zero();
 

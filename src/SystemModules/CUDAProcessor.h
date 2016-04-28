@@ -31,19 +31,18 @@ namespace Graphics
 		RemoveMode removeMode;
 		Profiler& profiler;
 
-		void calcScharrAtPixel(signedSize_t x, signedSize_t y);
+		CUDA_DEVICE_ONLY_MEMBER void calcScharrAtPixel(signedSize_t x, signedSize_t y);
 		//void calcEnergyAtPixel(signedSize_t x, signedSize_t y);
-		void calcAllEnergy();
+		CUDA_GLOBAL_MEMBER void calcAllEnergy();
 		/**
 		Recalculates energy around a removed seam.
 		*/
-		void recalcSeamEnergy(size_t seamIdx, bool transpose);
-		void resetSeamStart(bool transpose);
-		void calcSeamCosts(bool transpose);
-		size_t findMinCostSeam(bool transpose);
-		SeamRemoveDirection removeSeam(size_t seamIdx, bool transpose);
-		void highlightSeam(LABColorBuffer& seamBuffer, size_t seamIdx, bool transpose);
-		void updateBounds(size_t oppositeRowsLeft, SeamRemoveDirection seamRemoveDirection);
+		CUDA_DEVICE_ONLY_MEMBER void recalcSeamEnergy(size_t seamIdx, bool transpose);
+		CUDA_GLOBAL_MEMBER void resetSeamStart(bool transpose);
+		CUDA_GLOBAL_MEMBER void calcSeamCosts(bool transpose);
+		CUDA_DEVICE_ONLY_MEMBER size_t findMinCostSeam(bool transpose);
+		CUDA_DEVICE_ONLY_MEMBER SeamRemoveDirection removeSeam(size_t seamIdx, bool transpose);
+		CUDA_GLOBAL_MEMBER void updateBounds(size_t oppositeRowsLeft, SeamRemoveDirection seamRemoveDirection);
 		void doProcessImage(size_t numRowsToRemove, size_t numColsToRemove, size_t numCores);
 	public:
 		CUDAProcessor(LABColorBuffer& pImage, Profiler& pProfiler);
@@ -53,6 +52,5 @@ namespace Graphics
 		Performs seam cutting on an image.
 		*/
 		void ProcessImage(size_t numRowsToRemove, size_t numColsToRemove);
-		void TestProcessImage();
 	};
 }

@@ -17,28 +17,28 @@ namespace Graphics
 		const IntVec2 maxDimensions;
 		IntVec2 origin;
 		IntVec2 end;
-		__device__ inline IntVec2 getDimensions() const
+		CUDA_DEVICE_ONLY_MEMBER inline IntVec2 getDimensions() const
 		{
 			return end - origin;
 		}
-		__device__ inline IntVec2 getAnchoredMaxDimensions() const
+		CUDA_DEVICE_ONLY_MEMBER inline IntVec2 getAnchoredMaxDimensions() const
 		{
 			return maxDimensions - origin;
 		}
 	public:
-		__device__ ElementT* Buffer() {
+		CUDA_DEVICE_ONLY_MEMBER ElementT* Buffer() {
 			return pixels;
 		}
 
 		/**
 		Gets the width of the image buffer.
 		*/
-		__device__ size_t Width() const
+		CUDA_DEVICE_ONLY_MEMBER size_t Width() const
 		{
 			return getDimensions().GetX();
 		}
 
-		__device__ bool SetWidth(size_t newWidth)
+		CUDA_DEVICE_ONLY_MEMBER bool SetWidth(size_t newWidth)
 		{
 			//Abort if this is larger than the maximum end.
 			if (newWidth < 1 || newWidth > getAnchoredMaxDimensions().GetX())
@@ -53,12 +53,12 @@ namespace Graphics
 		/**
 		Gets the height of the image buffer.
 		*/
-		__device__ size_t Height() const
+		CUDA_DEVICE_ONLY_MEMBER size_t Height() const
 		{
 			return getDimensions().GetY();
 		}
 
-		__device__ bool SetHeight(size_t newHeight)
+		CUDA_DEVICE_ONLY_MEMBER bool SetHeight(size_t newHeight)
 		{
 			//Abort if this is larger than the maximum end.
 			if (newHeight < 1 || newHeight > getAnchoredMaxDimensions().GetY())
@@ -69,12 +69,12 @@ namespace Graphics
 			return true;
 		}
 
-		__device__ const IntVec2& Origin() const
+		CUDA_DEVICE_ONLY_MEMBER const IntVec2& Origin() const
 		{
 			return origin;
 		}
 
-		__device__ bool SetOrigin(const IntVec2& newOrigin)
+		CUDA_DEVICE_ONLY_MEMBER bool SetOrigin(const IntVec2& newOrigin)
 		{
 			if (newOrigin.GetX() < 0 || newOrigin.GetX() >= end.GetX() ||
 				newOrigin.GetY() < 0 || newOrigin.GetY() >= end.GetY())
@@ -85,12 +85,12 @@ namespace Graphics
 			return true;
 		}
 
-		__device__ const IntVec2& End() const
+		CUDA_DEVICE_ONLY_MEMBER const IntVec2& End() const
 		{
 			return end;
 		}
 
-		__device__ bool SetEnd(const IntVec2& newEnd)
+		CUDA_DEVICE_ONLY_MEMBER bool SetEnd(const IntVec2& newEnd)
 		{
 			if (newEnd.GetX() <= origin.GetX() || newEnd.GetX() > maxDimensions.GetX() ||
 				newEnd.GetY() <= origin.GetY() || newEnd.GetY() > maxDimensions.GetY())
@@ -101,7 +101,7 @@ namespace Graphics
 			return true;
 		}
 
-		__device__ bool SetDimensions(const IntVec2& newDimensions)
+		CUDA_DEVICE_ONLY_MEMBER bool SetDimensions(const IntVec2& newDimensions)
 		{
 			if (newDimensions.GetX() < 0 || newDimensions.GetX() > getAnchoredMaxDimensions().GetX() ||
 				newDimensions.GetY() < 0 || newDimensions.GetY() > getAnchoredMaxDimensions().GetY())
@@ -112,13 +112,13 @@ namespace Graphics
 			true;
 		}
 
-		__device__ bool IsInBounds(ptrdiff_t x, ptrdiff_t y) const
+		CUDA_DEVICE_ONLY_MEMBER bool IsInBounds(ptrdiff_t x, ptrdiff_t y) const
 		{
 			
 			return (x >= 0 && x < getDimensions().GetX()) &&
 				(y >= 0 && y < getDimensions().GetY());
 		}
-		__device__ bool IsInBounds(const IntVec2& pos) const
+		CUDA_DEVICE_ONLY_MEMBER bool IsInBounds(const IntVec2& pos) const
 		{
 			return IsInBounds(pos.GetX(), pos.GetY());
 		}
@@ -126,7 +126,7 @@ namespace Graphics
 		/**
 		Gets a constant reference to the pixel at (x, y).
 		*/
-		__device__ const ElementT* PixelAt(ptrdiff_t x, ptrdiff_t y) const
+		CUDA_DEVICE_ONLY_MEMBER const ElementT* PixelAt(ptrdiff_t x, ptrdiff_t y) const
 		{
 			if (!IsInBounds(x,y))
 			{
@@ -139,7 +139,7 @@ namespace Graphics
 			y += origin.GetY();
 			return &pixels[IMGBUFFER_XY_TO_IDX(x, y, maxDimensions.GetX())];
 		}
-		__device__ const ElementT* PixelAt(const IntVec2& pos) const
+		CUDA_DEVICE_ONLY_MEMBER const ElementT* PixelAt(const IntVec2& pos) const
 		{
 			return PixelAt(pos.GetX(), pos.GetY());
 		}
@@ -147,16 +147,16 @@ namespace Graphics
 		/**
 		Gets a writeable reference to the pixel at (x, y).
 		*/
-		__device__ ElementT* WritablePixelAt(ptrdiff_t x, ptrdiff_t y)
+		CUDA_DEVICE_ONLY_MEMBER ElementT* WritablePixelAt(ptrdiff_t x, ptrdiff_t y)
 		{
 			return const_cast<ElementT*>(PixelAt(x, y));
 		}
-		__device__ ElementT* WritablePixelAt(const IntVec2& pos)
+		CUDA_DEVICE_ONLY_MEMBER ElementT* WritablePixelAt(const IntVec2& pos)
 		{
 			return WritablePixelAt(pos.GetX(), pos.GetY());
 		}
 
-		__device__ void SetPixelAt(ptrdiff_t x, ptrdiff_t y, const ElementT& value)
+		CUDA_DEVICE_ONLY_MEMBER void SetPixelAt(ptrdiff_t x, ptrdiff_t y, const ElementT& value)
 		{
 			if (!IsInBounds(x, y))
 			{
@@ -169,7 +169,7 @@ namespace Graphics
 			y += origin.GetY();
 			pixels[IMGBUFFER_XY_TO_IDX(x, y, maxDimensions.GetX())] = value;
 		}
-		__device__ void SetPixelAt(const IntVec2& pos, const ElementT& value)
+		CUDA_DEVICE_ONLY_MEMBER void SetPixelAt(const IntVec2& pos, const ElementT& value)
 		{
 			SetPixelAt(pos.GetX(), pos.GetY(), value);
 		}
@@ -177,7 +177,7 @@ namespace Graphics
 		/**
 		Sets all pixels in the buffer to the given value.
 		*/
-		__device__ void Clear(const ElementT& value)
+		CUDA_DEVICE_ONLY_MEMBER void Clear(const ElementT& value)
 		{
 			//For each pixel:
 			for (size_t i = 0; i < IMGBUFFER_NUM_PIXELS(maxDimensions.GetX(), maxDimensions.GetY()); ++i)
@@ -191,7 +191,7 @@ namespace Graphics
 		Copies the given pixels to this buffer.
 		The source buffer MUST have (width)*(height) pixels or this will crash.
 		*/
-		__device__ void CopyToBuffer(const ElementT* srcPixels)
+		CUDA_DEVICE_ONLY_MEMBER void CopyToBuffer(const ElementT* srcPixels)
 		{
 			//For each pixel:
 			for (size_t i = 0; i < IMGBUFFER_NUM_PIXELS(maxDimensions.GetX(), maxDimensions.GetY()); ++i)
