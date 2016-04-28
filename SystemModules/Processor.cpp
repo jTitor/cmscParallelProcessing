@@ -139,6 +139,11 @@ void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 		}
 		//Get the next pixel on the seam.
 		followSeam(&seamPos, currSeamElem->TracebackDirection, transpose);
+
+		if (!energy->IsInBounds(seamPos)) {
+			break;
+		}
+
 		currSeamElem = seamTraceback->PixelAt(seamPos);
 	}
 }
@@ -280,6 +285,12 @@ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transp
 
 		//Get the next pixel on the seam.
 		followSeam(&seamPos, currSeamElem->TracebackDirection, transpose);
+
+		//ugh: early out if we somehow went out of bounds.
+		if (!image.IsInBounds(seamPos)) {
+			break;
+		}
+
 		currSeamElem = seamTraceback->PixelAt(seamPos);
 	}
 
@@ -324,6 +335,11 @@ void Processor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool trans
 
 		//Get the next pixel on the seam.
 		followSeam(&seamPos, currSeamElem->TracebackDirection, transpose);
+
+		if (!image.IsInBounds(seamPos)) {
+			break;
+		}
+
 		currSeamElem = seamTraceback->PixelAt(seamPos);
 		++i;
 	}
@@ -415,6 +431,16 @@ void Processor::TestProcessImage()
 
 void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
+	//Note how many threads we'll be using.
+#pragma omp parallel
+	{
+		int numThreads = omp_get_num_threads();
+#pragma omp single
+		{
+			printf("Processor::ProcessImage(): OMP using %d threads\n", numThreads);
+		}
+	}
+
 	//Calculate the initial energy gradient of the image.
 	profiler.StartProfile(ProfileCode::PC_CALC_ALL_ENERGY);
 	calcAllEnergy();
