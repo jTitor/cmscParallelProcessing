@@ -9,3 +9,4 @@ NonRepo/*
 **/*.obj
 src/Debug/*
 src/Release/*
+*.o

@@ -20,7 +20,7 @@ struct ProgContext {
 	ptrdiff_t ColsToRemove;
 	int NumThreads;
 	LABColorBuffer* Image;
-	Profiler* Profiler;
+	Graphics::Profiler* Profiler;
 };
 
 bool loadParameters(ProgContext& ctx, int numArgs, char** args) {
