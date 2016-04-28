@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 using namespace std;
 using namespace Graphics;
