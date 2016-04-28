@@ -209,6 +209,14 @@ namespace Graphics
 			}
 		}
 		
+		void CopyToHostBuffer(ImgBuffer<ElementT> hostBuffer) {
+			size_t numPixels = IMGBUFFER_NUM_PIXELS(maxDimensions.GetX(), maxDimensions.GetY());
+			if (cudaMemcpy(hostBuffer.Buffer(), pixels sizeof(ElementT)*numPixels, cudaMemcpyDeviceToHost) != cudaSuccess) {
+				//Something bad happened!
+				assert(false && "Copy from device buffer to host buffer failed!");
+			}
+		}
+
 		CUDAImgBuffer<ElementT>(size_t pWidth, size_t pHeight) : maxDimensions(pWidth, pHeight)
 		{
 			assert(pWidth > 0 && pHeight > 0 && "ImgBuffer::ImgBuffer(): Trying to construct a buffer with 0 area!");

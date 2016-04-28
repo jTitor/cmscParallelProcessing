@@ -47,7 +47,7 @@ __device__ void CUDAProcessor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 	//Unclear - can we filter in place?
 
 	//Whatever the case, get our current pixel.
-	auto pixel = energy->WritablePixelAt(x, y);
+	auto pixel = energy.WritablePixelAt(x, y);
 	//Now get the neighboring pixels.
 	//Remember to wrap around if the pixel would be out of bounds.
 	const int kNumPixels = 8;
@@ -94,9 +94,15 @@ __device__ void CUDAProcessor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 
 __global__ void CUDAProcessor::calcAllEnergy()
 {
+	//If this is out of bounds, abort.
+	size_t pixelIdx = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (pixelIdx >= imageNumPixels) {
+		return;
+	}
+
 	//Get the energy at this block's pixel.
-	int x = blockIdx.x;
-	int y = blockIdx.x; //TODO
+	int y = pixelIdx / imageWidth;
+	int x = pixelIdx % imageWidth;
 	calcScharrAtPixel(x, y);
 }
 
@@ -117,7 +123,7 @@ __device__ void CUDAProcessor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 		!transpose ? 0 : image.Height() - 1);
 	seamPos += (-seamUp)*seamIdx;
 
-	const SeamTracebackElem* currSeamElem = seamTraceback->PixelAt(seamPos);
+	const SeamTracebackElem* currSeamElem = seamTraceback.PixelAt(seamPos);
 	//For each pixel P in the seam:
 	while (currSeamElem->TracebackDirection != SEAM_TB_END)
 	{
@@ -125,26 +131,26 @@ __device__ void CUDAProcessor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 		//recalc energy of neighboring pixel (xS, yS-1) - this was the upper/left side of the seam.
 		IntVec2 neighbor = seamPos + seamUp;
 		//Neighbor may be out of bounds, wrap it.
-		//neighbor.X() = wrap(neighbor.X(), energy->Width());
-		//neighbor.Y() = wrap(neighbor.Y(), energy->Height());
+		//neighbor.X() = wrap(neighbor.X(), energy.Width());
+		//neighbor.Y() = wrap(neighbor.Y(), energy.Height());
 
 		calcScharrAtPixel(seamPos.X(), seamPos.Y());
-		if (energy->IsInBounds(neighbor))
+		if (energy.IsInBounds(neighbor))
 		{
 			calcScharrAtPixel(neighbor.X(), neighbor.Y());
 		}
 		//Get the next pixel on the seam.
 		followSeam(&seamPos, currSeamElem->TracebackDirection, transpose);
 
-		if (!energy->IsInBounds(seamPos)) {
+		if (!energy.IsInBounds(seamPos)) {
 			break;
 		}
 
-		currSeamElem = seamTraceback->PixelAt(seamPos);
+		currSeamElem = seamTraceback.PixelAt(seamPos);
 	}
 }
 
-__device__ void CUDAProcessor::calcSeamCosts(bool transpose)
+__global__ void CUDAProcessor::calcSeamCosts(bool transpose)
 {
 	IntVec2 pixelPos = IntVec2::Zero();
 
@@ -153,58 +159,76 @@ __device__ void CUDAProcessor::calcSeamCosts(bool transpose)
 	const IntVec2 seamUp = IntVec2(!transpose ? 0 : -1, !transpose ? -1 : 0);
 	const IntVec2 seamRight = IntVec2(!transpose ? 1 : 0, !transpose ? 0 : 1);
 
-	const size_t bottomEdge = !transpose ? seamTraceback->Height() : seamTraceback->Width();
-	const size_t rightEdge = !transpose ? seamTraceback->Width() : seamTraceback->Height();
+	const size_t bottomEdge = !transpose ? seamTraceback.Height() : seamTraceback.Width();
+	const size_t rightEdge = !transpose ? seamTraceback.Width() : seamTraceback.Height();
 
-	//Solve pixels at left edge first.
-	//They'll just have energy.
-#pragma omp parallel for
-	for (int i = 0; i < bottomEdge; ++i)
-	{
-		pixelPos = (-seamUp)*i;
-		auto pixel = seamTraceback->WritablePixelAt(pixelPos);
-		pixel->SeamCost = *energy->PixelAt(pixelPos);
-		pixel->TracebackDirection = SEAM_TB_END;
+	size_t pixelIdx = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+	//Quit if this pixel is out of bounds.
+	if (pixelIdx >= bottomEdge) {
+		return;
+	}
+
+	//Solve our pixel!
+	pixelPos = (-seamUp)*pixelIdx;
+	auto pixel = seamTraceback.WritablePixelAt(pixelPos);
+	pixel->SeamCost = *energy.PixelAt(pixelPos);
+	pixel->TracebackDirection = SEAM_TB_END;
+}
+
+__global__ void CUDAProcessor::calcSeamCosts(bool transpose)
+{
+	IntVec2 pixelPos = IntVec2::Zero();
+
+	//Figure out constants given transpose mode:
+	//For moving along seam.
+	const IntVec2 seamUp = IntVec2(!transpose ? 0 : -1, !transpose ? -1 : 0);
+	const IntVec2 seamRight = IntVec2(!transpose ? 1 : 0, !transpose ? 0 : 1);
+
+	const size_t bottomEdge = !transpose ? seamTraceback.Height() : seamTraceback.Width();
+	const size_t rightEdge = !transpose ? seamTraceback.Width() : seamTraceback.Height();
+
+	size_t pixelIdx = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+	//Quit if this pixel is out of bounds.
+	if (pixelIdx >= bottomEdge) {
+		return;
 	}
 
 	//Now solve the pixels ahead of them.
 	//For each column (can't parallelize this):
 	for (size_t i = 1; i < rightEdge; ++i)
 	{
-#pragma omp parallel for
-		//For each row (can parallelize this?):
-		for (int j = 0; j < bottomEdge; ++j)
-		{
-			pixelPos = seamRight*i - seamUp*j;
-			auto pixel = seamTraceback->WritablePixelAt(pixelPos);
+		//Solve our element of the row.
+		pixelPos = seamRight*i - seamUp*pixelIdx;
+		auto pixel = seamTraceback.WritablePixelAt(pixelPos);
 
-			//The left seam cost will always be valid.
-			IntVec2 leftPos = pixelPos - seamRight;
-			IntVec2 upLeftPos = leftPos + seamUp;
-			IntVec2 downLeftPos = leftPos - seamUp;
-			EnergyT leftCost = seamTraceback->PixelAt(leftPos)->SeamCost;
-			EnergyT upLeftCost = seamTraceback->IsInBounds(upLeftPos) ?
-								seamTraceback->PixelAt(upLeftPos)->SeamCost : FLT_MAX;
-			EnergyT downLeftCost = seamTraceback->IsInBounds(downLeftPos) ?
-				seamTraceback->PixelAt(downLeftPos)->SeamCost : FLT_MAX;
+		//The left seam cost will always be valid.
+		IntVec2 leftPos = pixelPos - seamRight;
+		IntVec2 upLeftPos = leftPos + seamUp;
+		IntVec2 downLeftPos = leftPos - seamUp;
+		EnergyT leftCost = seamTraceback.PixelAt(leftPos)->SeamCost;
+		EnergyT upLeftCost = seamTraceback.IsInBounds(upLeftPos) ?
+							seamTraceback.PixelAt(upLeftPos)->SeamCost : FLT_MAX;
+		EnergyT downLeftCost = seamTraceback.IsInBounds(downLeftPos) ?
+			seamTraceback.PixelAt(downLeftPos)->SeamCost : FLT_MAX;
 
-			EnergyT minCost = fminf(fminf(leftCost, upLeftCost), downLeftCost);
+		EnergyT minCost = fminf(fminf(leftCost, upLeftCost), downLeftCost);
 			
-			//Now set our pixel's cost.
-			pixel->SeamCost = *energy->PixelAt(pixelPos) + minCost;
-			//Figure out our pixel's traceback direction.
-			if (minCost == leftCost)
-			{
-				pixel->TracebackDirection = SEAM_TB_LEFT;
-			}
-			else if (minCost == upLeftCost)
-			{
-				pixel->TracebackDirection = SEAM_TB_LUP;
-			}
-			else if (minCost == downLeftCost)
-			{
-				pixel->TracebackDirection = SEAM_TB_LDOWN;
-			}
+		//Now set our pixel's cost.
+		pixel->SeamCost = *energy.PixelAt(pixelPos) + minCost;
+		//Figure out our pixel's traceback direction.
+		if (minCost == leftCost)
+		{
+			pixel->TracebackDirection = SEAM_TB_LEFT;
+		}
+		else if (minCost == upLeftCost)
+		{
+			pixel->TracebackDirection = SEAM_TB_LUP;
+		}
+		else if (minCost == downLeftCost)
+		{
+			pixel->TracebackDirection = SEAM_TB_LDOWN;
 		}
 	}
 }
@@ -224,7 +248,7 @@ __device__ size_t CUDAProcessor::findMinCostSeam(bool transpose)
 	//For each pixel at the edge:
 	for (size_t i = 0; i < scanLen; ++i)
 	{
-		auto currPixel = seamTraceback->PixelAt(currPos + incr*i);
+		auto currPixel = seamTraceback.PixelAt(currPos + incr*i);
 		//Is this cost lower than the last known cost?
 		if (currPixel->SeamCost < minSeamCost)
 		{
@@ -253,7 +277,7 @@ __device__ CUDAProcessor::SeamRemoveDirection CUDAProcessor::removeSeam(size_t s
 		!transpose ? 0 : image.Height() - 1);
 	seamPos += (-seamUp)*seamIdx;
 
-	const SeamTracebackElem* currSeamElem = seamTraceback->PixelAt(seamPos);
+	const SeamTracebackElem* currSeamElem = seamTraceback.PixelAt(seamPos);
 	//Which way should we remove?
 	size_t midpoint = (transpose ? image.Height() : image.Width()) / 2;
 	removeDirection = seamIdx < midpoint ? REMOVE_DIRECTION_UP : REMOVE_DIRECTION_DOWN;
@@ -275,7 +299,7 @@ __device__ CUDAProcessor::SeamRemoveDirection CUDAProcessor::removeSeam(size_t s
 			//P.value = P'.value
 			image.SetPixelAt(pixelToCopyPos, *image.PixelAt(nextPixelPos));
 			//Copy the energy too!
-			energy->SetPixelAt(pixelToCopyPos, *energy->PixelAt(pixelToCopyPos));
+			energy.SetPixelAt(pixelToCopyPos, *energy.PixelAt(pixelToCopyPos));
 
 			//Move to the next pixel.
 			pixelToCopyPos = nextPixelPos;
@@ -290,10 +314,42 @@ __device__ CUDAProcessor::SeamRemoveDirection CUDAProcessor::removeSeam(size_t s
 			break;
 		}
 
-		currSeamElem = seamTraceback->PixelAt(seamPos);
+		currSeamElem = seamTraceback.PixelAt(seamPos);
 	}
 
 	return removeDirection;
+}
+
+__global__ void CUDAProcessor::updateBounds(size_t oppositeRowsLeft, SeamRemoveDirection seamRemoveDirection) {
+	IntVec2 removeVec = IntVec2(0, 0);
+	if (removeMode == REMOVE_ROWS)
+	{
+		removeVec = IntVec2(0, 1);
+	}
+	else
+	{
+		removeVec = IntVec2(1, 0);
+	}
+	if (seamRemoveDirection == REMOVE_DIRECTION_DOWN)
+	{
+		image.SetEnd(image.End() - removeVec);
+		energy.SetEnd(energy.End() - removeVec);
+		seamTraceback.SetEnd(seamTraceback.End() - removeVec);
+	}
+	else
+	{
+		image.SetOrigin(image.Origin() + removeVec);
+		energy.SetOrigin(energy.Origin() + removeVec);
+		seamTraceback.SetOrigin(seamTraceback.Origin() + removeVec);
+	}
+
+	//Check the other count - do we need to transpose?
+	RemoveMode oppositeMode = removeMode == REMOVE_ROWS ? REMOVE_COLS : REMOVE_ROWS;//(RemoveMode)((removeMode + 1) % REMOVE_MODE_COUNT);
+	if (oppositeRowsLeft > 0)
+	{
+		//If so, transpose at this point.
+		removeMode = oppositeMode;
+	}
 }
 
 void CUDAProcessor::doProcessImage(size_t numRowsToRemove, size_t numColsToRemove, size_t numCores)
@@ -303,12 +359,19 @@ void CUDAProcessor::doProcessImage(size_t numRowsToRemove, size_t numColsToRemov
 
 	//Calculate the initial energy gradient of the image.
 	profiler.StartProfile(ProfileCode::PC_CALC_ALL_ENERGY);
-	calcAllEnergy<<<numCores, 1>>>();
+	//X*Y operation; split evenly among SMs.
+	size_t numThreads = imageNumPixels / numCores;
+	assert(numThreads*numCores == imageNumPixels && "Cores don't evenly split image pixels!");
+	calcAllEnergy<<<numCores, numThreads>>>(numThreads);
 	profiler.EndProfile(ProfileCode::PC_CALC_ALL_ENERGY);
 
 #if defined(_DEBUG)
-	//Write the energy to output.
-	WriteEnergyBuffer(*energy, "energyBuffer.bmp");
+	{
+		//Write the energy to output.
+		EnergyBuffer tempEnergy(imageWidth, imageHeight);
+		energy.CopyToHostBuffer(tempEnergy);
+		WriteEnergyBuffer(tempEnergy, "energyBuffer.bmp");
+	}
 #endif
 
 	//How many rows to remove?
@@ -326,19 +389,28 @@ void CUDAProcessor::doProcessImage(size_t numRowsToRemove, size_t numColsToRemov
 
 		//Find the cost of each seam in the image.
 		profiler.StartProfile(ProfileCode::PC_CALC_SEAM_COSTS);
-		calcSeamCosts(transpose);
+		//Y operation.
+		size_t numThreads = !transpose ? imageHeight : imageWidth;
+		numThreads /= numCores;
+		resetSeamStart<<<numCores, numThreads>>>(transpose, numThreads);
+		calcSeamCosts<<<numCores, numThreads>>>(transpose, numThreads);
 		profiler.EndProfile(ProfileCode::PC_CALC_SEAM_COSTS);
 
 		//Remove minimum cost seam.
 		profiler.StartProfile(ProfileCode::PC_FIND_MIN_COST_SEAM);
+		TODO;
+		//Unclear if parallelizable, but is a Y operation.
 		size_t targetSeamIdx = findMinCostSeam(transpose);
 		profiler.EndProfile(ProfileCode::PC_FIND_MIN_COST_SEAM);
 		profiler.StartProfile(ProfileCode::PC_REMOVE_SEAM);
+		//Another part that may not be parallelizable. X operation.
+		TODO;
 		auto seamRemoveDirection = removeSeam(targetSeamIdx, transpose);
 		profiler.EndProfile(ProfileCode::PC_FIND_MIN_COST_SEAM);
 
 		//Now the image has been modified; recalculate the energy near the removed seam.
 		profiler.StartProfile(ProfileCode::PC_RECALC_SEAM_ENERGY);
+		//Hasn't been parallelized. Unknown dimensions.
 		recalcSeamEnergy(targetSeamIdx, transpose);
 		profiler.EndProfile(ProfileCode::PC_RECALC_SEAM_ENERGY);
 		//Seam traceback doesn't have to be updated since
@@ -347,80 +419,29 @@ void CUDAProcessor::doProcessImage(size_t numRowsToRemove, size_t numColsToRemov
 		//Update buffer dimensions.
 		profiler.StartProfile(ProfileCode::PC_BOUNDS_ADJUST);
 		rowsColsToRemove[removeMode] -= 1;
-		IntVec2 removeVec = IntVec2(0, 0);
-		if (removeMode == REMOVE_ROWS)
-		{
-#if defined(_DEBUG)
-			//printf("CUDAProcessor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
-#endif
-			removeVec = IntVec2(0, 1);
-		}
-		else
-		{
-#if defined(_DEBUG)
-			//printf("CUDAProcessor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
-#endif
-			removeVec = IntVec2(1, 0);
-		}
-		if (seamRemoveDirection == REMOVE_DIRECTION_DOWN)
-		{
-			image.SetEnd(image.End() - removeVec);
-			energy->SetEnd(energy->End() - removeVec);
-			seamTraceback->SetEnd(seamTraceback->End() - removeVec);
-		}
-		else
-		{
-			image.SetOrigin(image.Origin() + removeVec);
-			energy->SetOrigin(energy->Origin() + removeVec);
-			seamTraceback->SetOrigin(seamTraceback->Origin() + removeVec);
-		}
-
-		//Check the other count - do we need to transpose?
-		RemoveMode oppositeMode = removeMode == REMOVE_ROWS ? REMOVE_COLS : REMOVE_ROWS;//(RemoveMode)((removeMode + 1) % REMOVE_MODE_COUNT);
-		if (rowsColsToRemove[oppositeMode] > 0)
-		{
-			//If so, transpose at this point.
-			removeMode = oppositeMode;
-		}
+		updateBounds<<<1, 1>>>(rowsColsToRemove[oppositeMode], seamRemoveDirection);
 		profiler.EndProfile(ProfileCode::PC_BOUNDS_ADJUST);
 	}
 }
 
-CUDAProcessor::CUDAProcessor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
+CUDAProcessor::CUDAProcessor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage.Width(), pImage.Height()), energy(pImage.Width(), pImage.Height()), seamTraceback(pImage.Width(), pImage.Height()), profiler(pProfiler)
 {
-	//Derive other buffers from the given image buffer.
-	EnergyBuffer* energyMem = new EnergyBuffer(pImage.Width(), pImage.Height());
-	SeamTracebackBuffer* seamBufferMem = new SeamTracebackBuffer(pImage.Width(), pImage.Height());
-	cudaMalloc((void**)&energy, sizeof(energyMem));
-
-	delete energyMem;
-	delete seamBufferMem;
+	imageWidth = pImage.Width();
+	imageHeight = pImage.Height();
+	imageNumPixels = imageWidth*imageHeight;
+	//Copy source image to device.
+	image.CopyFromHostBuffer(pImage);
 	removeMode = REMOVE_ROWS;
 }
 
 CUDAProcessor::~CUDAProcessor()
 {
-	delete seamTraceback;
-	delete energy;
 }
 
 void CUDAProcessor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
-	//Create GPU-local buffers:
-	//Copy of the image.
-	CUDALABColorBuffer cudaImage;
-	//Energy buffer.
-	CUDAEnergyBuffer cudaEnergy;
-	//Seam traceback.
-	CUDASeamTracebackBuffer cudaSeamTraceback;
-
-	//Copy to those buffers.
-	cudaImage.CopyFromHostBuffer(image);
-
 	//Do the actual work.
 	//Should probably lookup how many blocks
 	//the device has available first.
 	doProcessImage(numRowsToRemove, numColsToRemove, numCores);
-
-	//Release buffers.
 }

@@ -19,4 +19,5 @@ namespace Graphics
 	typedef CUDAImgBuffer<Vec3> CUDALABColorBuffer;
 	typedef CUDAImgBuffer<EnergyT> CUDAEnergyBuffer;
 	typedef CUDAImgBuffer<SeamTracebackElem> CUDASeamTracebackBuffer;
+	typedef CUDAImgBuffer<IntVec2> CUDASeamPositionBuffer;
 }

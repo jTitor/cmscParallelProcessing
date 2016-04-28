@@ -22,9 +22,12 @@ namespace Graphics
 			REMOVE_DIRECTION_COUNT,
 		};
 
-		LABColorBuffer& image;
-		EnergyBuffer* energy;
-		SeamTracebackBuffer* seamTraceback;
+		size_t imageWidth;
+		size_t imageHeight;
+		size_t imageNumPixels;
+		CUDALABColorBuffer image;
+		CUDAEnergyBuffer energy;
+		CUDASeamTracebackBuffer seamTraceback;
 		RemoveMode removeMode;
 		Profiler& profiler;
 
@@ -35,10 +38,12 @@ namespace Graphics
 		Recalculates energy around a removed seam.
 		*/
 		void recalcSeamEnergy(size_t seamIdx, bool transpose);
+		void resetSeamStart(bool transpose);
 		void calcSeamCosts(bool transpose);
 		size_t findMinCostSeam(bool transpose);
 		SeamRemoveDirection removeSeam(size_t seamIdx, bool transpose);
 		void highlightSeam(LABColorBuffer& seamBuffer, size_t seamIdx, bool transpose);
+		void updateBounds(size_t oppositeRowsLeft, SeamRemoveDirection seamRemoveDirection);
 		void doProcessImage(size_t numRowsToRemove, size_t numColsToRemove, size_t numCores);
 	public:
 		CUDAProcessor(LABColorBuffer& pImage, Profiler& pProfiler);

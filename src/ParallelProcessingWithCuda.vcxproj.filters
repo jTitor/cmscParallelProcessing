@@ -84,6 +84,9 @@
     <ClInclude Include="Proj6.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Primitives\CUDAImgBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Libraries\graphics435\slVector.cpp">

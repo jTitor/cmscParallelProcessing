@@ -84,6 +84,7 @@
     <ClInclude Include="Math\Vec4.h" />
     <ClInclude Include="Primitives\AABB.h" />
     <ClInclude Include="Primitives\Color.h" />
+    <ClInclude Include="Primitives\CUDAImgBuffer.h" />
     <ClInclude Include="Primitives\ImgBuffer.h" />
     <ClInclude Include="Profiling\Profiler.h" />
     <ClInclude Include="Proj6.h" />
