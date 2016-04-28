@@ -22,6 +22,7 @@ namespace Graphics
 			REMOVE_DIRECTION_COUNT,
 		};
 
+		size_t numThreads;
 		LABColorBuffer& image;
 		EnergyBuffer* energy;
 		SeamTracebackBuffer* seamTraceback;
@@ -40,7 +41,7 @@ namespace Graphics
 		SeamRemoveDirection removeSeam(size_t seamIdx, bool transpose);
 		void highlightSeam(LABColorBuffer& seamBuffer, size_t seamIdx, bool transpose);
 	public:
-		OMPProcessor(LABColorBuffer& pImage, Profiler& pProfiler);
+		OMPProcessor(LABColorBuffer& pImage, Profiler& pProfiler, size_t pNumThreads);
 		~OMPProcessor();
 
 		/**

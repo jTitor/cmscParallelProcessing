@@ -5,7 +5,7 @@
 
 using namespace Graphics;
 
-int wrap(signedSize_t x, signedSize_t mod)
+static int wrap(signedSize_t x, signedSize_t mod)
 {
 	if (x >= 0)
 	{
@@ -15,7 +15,7 @@ int wrap(signedSize_t x, signedSize_t mod)
 	return mod + (x % mod);
 }
 
-void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool transpose)
+static void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool transpose)
 {
 	IntVec2 seamUp = IntVec2(!transpose ? 0 : -1, !transpose ? -1 : 0);
 	IntVec2 seamLeft = IntVec2(!transpose ? -1 : 0, !transpose ? 0 : -1);
@@ -89,7 +89,7 @@ void OMPProcessor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 
 void OMPProcessor::calcAllEnergy()
 {
-#pragma omp parallel for
+#pragma omp parallel for num_threads(numThreads)
 	//Get energy on all pixels :
 	for (int x = 0; x < energy->Width(); ++x)
 	{
@@ -162,7 +162,7 @@ void OMPProcessor::calcSeamCosts(bool transpose)
 
 	//Solve pixels at left edge first.
 	//They'll just have energy.
-#pragma omp parallel for
+#pragma omp parallel for num_threads(numThreads)
 	for (int i = 0; i < bottomEdge; ++i)
 	{
 		pixelPos = (-seamUp)*i;
@@ -175,7 +175,7 @@ void OMPProcessor::calcSeamCosts(bool transpose)
 	//For each column (can't parallelize this):
 	for (size_t i = 1; i < rightEdge; ++i)
 	{
-#pragma omp parallel for
+#pragma omp parallel for num_threads(numThreads)
 		//For each row (can parallelize this?):
 		for (int j = 0; j < bottomEdge; ++j)
 		{
@@ -348,8 +348,9 @@ void OMPProcessor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool tr
 	}
 }
 
-OMPProcessor::OMPProcessor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
+OMPProcessor::OMPProcessor(LABColorBuffer& pImage, Profiler& pProfiler, size_t pNumThreads) : image(pImage), profiler(pProfiler), numThreads(pNumThreads)
 {
+	omp_set_num_threads(numThreads);
 	//Derive other buffers from the given image buffer.
 	energy = new EnergyBuffer(pImage.Width(), pImage.Height());
 	seamTraceback = new SeamTracebackBuffer(pImage.Width(), pImage.Height());
@@ -435,7 +436,7 @@ void OMPProcessor::TestProcessImage()
 void OMPProcessor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
 	//Note how many threads we'll be using.
-#pragma omp parallel
+#pragma omp parallel num_threads(numThreads)
 	{
 		int numThreads = omp_get_num_threads();
 #pragma omp single

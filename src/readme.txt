@@ -1,5 +1,5 @@
 Syntax:
-Call with ./Proj6 (input path) (output path) (output width) (output height).
+Call with ./Proj6 (input path) (output path) (output width) (output height) [number of threads]. If the number of threads is not included, it will default to the number of cores on the invoked machine.
 
 Dependencies:
 By default, only BMPs can be loaded since CImg keeps trying to use GraphicsMagick

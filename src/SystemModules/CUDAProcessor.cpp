@@ -1,11 +1,11 @@
-#include "Processor.h"
+#include "CUDAProcessor.h"
 #include "../Math/IntVec2.h"
 #include "../Profiling/Profiler.h"
 #include <omp.h>
 
 using namespace Graphics;
 
-int wrap(signedSize_t x, signedSize_t mod)
+static int wrap(signedSize_t x, signedSize_t mod)
 {
 	if (x >= 0)
 	{
@@ -15,7 +15,7 @@ int wrap(signedSize_t x, signedSize_t mod)
 	return mod + (x % mod);
 }
 
-void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool transpose)
+static void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool transpose)
 {
 	IntVec2 seamUp = IntVec2(!transpose ? 0 : -1, !transpose ? -1 : 0);
 	IntVec2 seamLeft = IntVec2(!transpose ? -1 : 0, !transpose ? 0 : -1);

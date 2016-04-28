@@ -7,61 +7,85 @@
 #include "Libraries/Graphics435.h"
 #include <stdio.h>
 #include <assert.h>
+#include <omp.h>
 
 using namespace Graphics;
 
-int main(int numArgs, char** args)
-{
-	char* inPath;
-	char* outPath;
-	size_t newWidth;
-	size_t newHeight;
+struct ProgContext {
+	char* InPath;
+	char* OutPath;
+	size_t NewWidth;
+	size_t NewHeight;
+	ptrdiff_t RowsToRemove;
+	ptrdiff_t ColsToRemove;
+	int NumThreads;
+	LABColorBuffer* Image;
+	Profiler* Profiler;
+};
+
+bool loadParameters(ProgContext& ctx, int numArgs, char** args) {
+	//Set defaults.
+	ctx.NumThreads = omp_get_num_procs();
+
 	//Sanity check parameters.
 	//Expecting format ./Proj6 (input path) (output path) (output_width) (output_height).
 	if (numArgs < 1 + 4)
 	{
-		printf("%s\n", "Syntax: ./Proj6 (input path) (output path) (output width) (output height)");
-		return 0;
+		printf("%s\n", "Syntax: ./Proj6 (input path) (output path) (output width) (output height) [number of threads]");
+		return false;
 	}
-	inPath = args[1];
-	outPath = args[2];
-	newWidth = atoi(args[3]);
-	newHeight = atoi(args[4]);
+	ctx.InPath = args[1];
+	ctx.OutPath = args[2];
+	ctx.NewWidth = atoi(args[3]);
+	ctx.NewHeight = atoi(args[4]);
 	//Also check that dimensions are sane.
-	if (newWidth < 1 || newHeight < 1)
+	if (ctx.NewWidth < 1 || ctx.NewHeight < 1)
 	{
 		printf("main(): Invalid dimensions, aborting!\n");
-		return 0;
+		return false;
 	}
 
-	//Load the image.
-	LABColorBuffer* image = LoadImageBuffer(inPath);
+	//Do we have a thread count parameter?
+	if (numArgs >= 1 + 5) {
+		//Load that up too.
+		int numThreads = atoi(args[5]);
+		if (numThreads >= 1 && numThreads < omp_get_max_threads()) {
+			ctx.NumThreads = numThreads;
+		}
+	}
 
-	printf("main(): Resizing from %d x %d to %d x %d\n", image->Width(), image->Height(), newWidth, newHeight);
-	ptrdiff_t colsToRemove = image->Width() - newWidth;
-	ptrdiff_t rowsToRemove = image->Height() - newHeight;
+	return true;
+}
+
+bool validateNewDimensions(ProgContext& ctx) {
+	printf("main(): Resizing from %d x %d to %d x %d\n", ctx.Image->Width(), ctx.Image->Height(), ctx.NewWidth, ctx.NewHeight);
 	//Check that the output dimensions are smaller than input.
-	if (rowsToRemove < 0 || colsToRemove < 0)
+	if (ctx.RowsToRemove < 0 || ctx.ColsToRemove < 0)
 	{
 		printf("%s\n", "main(): New dimensions are larger than original dimensions, aborting!");
-		return 0;
+		return false;
 	}
-	if (rowsToRemove == 0 && colsToRemove == 0)
+	if (ctx.RowsToRemove == 0 && ctx.ColsToRemove == 0)
 	{
 		printf("%s\n", "main(): New dimensions are same as original dimensions, aborting!");
-		return 0;
-	}	
-	
-	//Do our work...
-	Profiler* profiler = new Profiler();
-	OMPProcessor* processor = new OMPProcessor(*image, *profiler);
-	processor->ProcessImage(rowsToRemove, colsToRemove);
+		return false;
+	}
 
-	WriteImageBuffer(*image, outPath);
+	return true;
+}
 
-	//Display performance results.
+void processImage(ProgContext& ctx) {
+	OMPProcessor* processor = new OMPProcessor(*ctx.Image, *ctx.Profiler, ctx.NumThreads);
+	processor->ProcessImage(ctx.RowsToRemove, ctx.ColsToRemove);
+
+	WriteImageBuffer(*ctx.Image, ctx.OutPath);
+
+	delete processor;
+}
+
+void displayResults(ProgContext& ctx) {
 	printf("%s\n", "Resize complete, displaying profile data:");
-	profiler->PrintAll();
+	ctx.Profiler->PrintAll();
 	//Also save them out to CSV.
 	const char* profilePath = "profileData.csv";
 	printf("Saving profile data to %s...\n", profilePath);
@@ -70,11 +94,35 @@ int main(int numArgs, char** args)
 		printf("Couldn't open %s! Didn't save profile data!", profilePath);
 	}
 	else {
-		profiler->PrintAllCSV(profileFile);
+		ctx.Profiler->PrintAllCSV(profileFile);
 	}
+}
+
+int main(int numArgs, char** args)
+{
+	ProgContext ctx = { 0 };
+	if (!loadParameters(ctx, numArgs, args)) {
+		return 1;
+	}
+	
+	//Load the image.
+	ctx.Image = LoadImageBuffer(ctx.InPath);
+	ctx.RowsToRemove = ctx.Image->Width() - ctx.NewWidth;
+	ctx.ColsToRemove = ctx.Image->Height() - ctx.NewHeight;
+	if (!validateNewDimensions(ctx)) {
+		return 0;
+	}
+	
+	
+	//Do our work...
+	ctx.Profiler = new Profiler();
+	processImage(ctx);
+	
+
+	//Display performance results.
+	displayResults(ctx);
 
 	//Release resources.
-	delete processor;
-	delete profiler;
+	delete ctx.Profiler;
 	return 0;
 }
