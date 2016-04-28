@@ -30,6 +30,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 7.5.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -38,7 +39,12 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -64,8 +70,51 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Libraries\Graphics435.h" />
+    <ClInclude Include="Libraries\graphics435\CImg.h" />
+    <ClInclude Include="Libraries\graphics435\slIO.H" />
+    <ClInclude Include="Libraries\graphics435\slVector.H" />
+    <ClInclude Include="Math\BasicTypedefs.h" />
+    <ClInclude Include="Math\IntVec2.h" />
+    <ClInclude Include="Math\Mat3x3.h" />
+    <ClInclude Include="Math\Mat4x4.h" />
+    <ClInclude Include="Math\MathHelpers.h" />
+    <ClInclude Include="Math\Random.h" />
+    <ClInclude Include="Math\Vec3.h" />
+    <ClInclude Include="Math\Vec4.h" />
+    <ClInclude Include="Primitives\AABB.h" />
+    <ClInclude Include="Primitives\Color.h" />
+    <ClInclude Include="Primitives\ImgBuffer.h" />
+    <ClInclude Include="Profiling\Profiler.h" />
+    <ClInclude Include="Proj6.h" />
+    <ClInclude Include="SystemModules\BufferSpecializations.h" />
+    <ClInclude Include="SystemModules\CUDAProcessor.h" />
+    <ClInclude Include="SystemModules\OMPProcessor.h" />
+    <ClInclude Include="SystemModules\SeamTracebackElem.h" />
+    <ClInclude Include="SystemModules\TestMacros.h" />
+    <ClInclude Include="Time\Clock.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Libraries\graphics435\slVector.cpp" />
+    <ClCompile Include="Math\IntVec2.cpp" />
+    <ClCompile Include="Math\Mat3x3.cpp" />
+    <ClCompile Include="Math\Mat4x4.cpp" />
+    <ClCompile Include="Math\MathHelpers.cpp" />
+    <ClCompile Include="Math\Random.cpp" />
+    <ClCompile Include="Math\Vec3.cpp" />
+    <ClCompile Include="Math\Vec4.cpp" />
+    <ClCompile Include="Primitives\AABB.cpp" />
+    <ClCompile Include="Primitives\Color.cpp" />
+    <ClCompile Include="Profiling\Profiler.cpp" />
+    <ClCompile Include="Proj6.cpp" />
+    <ClCompile Include="SystemModules\BufferSpecializations.cpp" />
+    <ClCompile Include="SystemModules\CUDAProcessor.cpp" />
+    <ClCompile Include="SystemModules\OMPProcessor.cpp" />
+    <ClCompile Include="SystemModules\SeamTracebackElem.cpp" />
+    <ClCompile Include="Time\Clock.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 7.5.targets" />
   </ImportGroup>
 </Project>
