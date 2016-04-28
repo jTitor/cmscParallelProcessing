@@ -57,10 +57,13 @@
     <ClCompile Include="SystemModules\BufferSpecializations.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SystemModules\Processor.cpp">
+    <ClCompile Include="SystemModules\SeamTracebackElem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SystemModules\SeamTracebackElem.cpp">
+    <ClCompile Include="SystemModules\OMPProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemModules\CUDAProcessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -125,13 +128,16 @@
     <ClInclude Include="SystemModules\BufferSpecializations.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SystemModules\Processor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="SystemModules\SeamTracebackElem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SystemModules\TestMacros.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemModules\OMPProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemModules\CUDAProcessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,8 +1,11 @@
 NonRepo/*
-*.o
-*.lib
-x64/*
-Debug/*
+**/*.o
+**/*.lib
+**/x64/*
+**/Debug/*
 **/*.sdf
 **/*.opensdf
 **/Release/*
+**/*.obj
+src/Debug/*
+src/Release/*

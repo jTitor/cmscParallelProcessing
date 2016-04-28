@@ -1,4 +1,4 @@
-#include "Processor.h"
+#include "OMPProcessor.h"
 #include "../Math/IntVec2.h"
 #include "../Profiling/Profiler.h"
 #include <omp.h>
@@ -31,13 +31,13 @@ void followSeam(IntVec2* outVec, SeamTracebackDirection direction, bool transpos
 		*outVec += seamUp + seamLeft;
 		break;
 	default:
-		assert(false && "Processor::removeSeam(): Seam data is corrupt!");
+		assert(false && "OMPProcessor::removeSeam(): Seam data is corrupt!");
 		abort();
 		break;
 	}
 }
 
-void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
+void OMPProcessor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 {
 	//Unclear - can we filter in place?
 
@@ -87,7 +87,7 @@ void Processor::calcScharrAtPixel(signedSize_t x, signedSize_t y)
 	*pixel = sqrtf(horizGradientSquared.SqrMag() + vertGradientSquared.SqrMag());
 }
 
-void Processor::calcAllEnergy()
+void OMPProcessor::calcAllEnergy()
 {
 #pragma omp parallel for
 	//Get energy on all pixels :
@@ -104,7 +104,7 @@ void Processor::calcAllEnergy()
 	}
 }
 
-void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
+void OMPProcessor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 {
 	//TODO: parallelize this.
 
@@ -148,7 +148,7 @@ void Processor::recalcSeamEnergy(size_t seamIdx, bool transpose)
 	}
 }
 
-void Processor::calcSeamCosts(bool transpose)
+void OMPProcessor::calcSeamCosts(bool transpose)
 {
 	IntVec2 pixelPos = IntVec2::Zero();
 
@@ -213,7 +213,7 @@ void Processor::calcSeamCosts(bool transpose)
 	}
 }
 
-size_t Processor::findMinCostSeam(bool transpose)
+size_t OMPProcessor::findMinCostSeam(bool transpose)
 {
 	IntVec2 currPos = IntVec2(!transpose ? image.Width() - 1 : 0,
 		!transpose ? 0 : image.Height() - 1);
@@ -242,7 +242,7 @@ size_t Processor::findMinCostSeam(bool transpose)
 	return minIdx;
 }
 
-Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transpose)
+OMPProcessor::SeamRemoveDirection OMPProcessor::removeSeam(size_t seamIdx, bool transpose)
 {
 	SeamRemoveDirection removeDirection = REMOVE_DIRECTION_DOWN;
 	//Figure out constants given transpose mode:
@@ -263,7 +263,10 @@ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transp
 	removeDirection = seamIdx < midpoint ? REMOVE_DIRECTION_UP : REMOVE_DIRECTION_DOWN;
 	ptrdiff_t directionFactor = removeDirection == REMOVE_DIRECTION_UP ? 1 : -1;
 
-	//TODO: parallelize this
+	//TODO: parallelize this.
+	//In order to do this, we need the position of the pixel on the seam
+	//WITHOUT following the seam. This means storing an extra buffer and removing the traceback code.
+	//May not be worth doing.
 
 	//For each pixel P in the seam:
 	while (currSeamElem->TracebackDirection != SEAM_TB_END)
@@ -297,7 +300,7 @@ Processor::SeamRemoveDirection Processor::removeSeam(size_t seamIdx, bool transp
 	return removeDirection;
 }
 
-void Processor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool transpose)
+void OMPProcessor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool transpose)
 {
 	//Figure out constants given transpose mode:
 	//For getting seam start.
@@ -345,7 +348,7 @@ void Processor::highlightSeam(LABColorBuffer& buffer, size_t seamIdx, bool trans
 	}
 }
 
-Processor::Processor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
+OMPProcessor::OMPProcessor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage), profiler(pProfiler)
 {
 	//Derive other buffers from the given image buffer.
 	energy = new EnergyBuffer(pImage.Width(), pImage.Height());
@@ -353,16 +356,16 @@ Processor::Processor(LABColorBuffer& pImage, Profiler& pProfiler) : image(pImage
 	removeMode = REMOVE_ROWS;
 }
 
-Processor::~Processor()
+OMPProcessor::~OMPProcessor()
 {
 	delete seamTraceback;
 	delete energy;
 }
 
 //Highlights a row and column seam.
-void Processor::TestProcessImage()
+void OMPProcessor::TestProcessImage()
 {
-	printf("Processor::TestProcessImage(): Testing seam finding\n");
+	printf("OMPProcessor::TestProcessImage(): Testing seam finding\n");
 	WriteImageBuffer(image, "unmodified.bmp");
 	calcAllEnergy();
 	WriteEnergyBuffer(*energy, "energyBufferStart.bmp");
@@ -396,7 +399,7 @@ void Processor::TestProcessImage()
 		if (removeMode == REMOVE_ROWS)
 		{
 #if defined(_DEBUG)
-			printf("Processor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			printf("OMPProcessor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			image.SetHeight(image.Height() - 1);
 			energy->SetHeight(energy->Height() - 1);
@@ -406,7 +409,7 @@ void Processor::TestProcessImage()
 		else
 		{
 #if defined(_DEBUG)
-			printf("Processor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			printf("OMPProcessor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			image.SetWidth(image.Width() - 1);
 			energy->SetWidth(energy->Width() - 1);
@@ -429,7 +432,7 @@ void Processor::TestProcessImage()
 	WriteImageBuffer(image, "imageTwoSeamsRemoved.bmp");
 }
 
-void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
+void OMPProcessor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 {
 	//Note how many threads we'll be using.
 #pragma omp parallel
@@ -437,7 +440,7 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 		int numThreads = omp_get_num_threads();
 #pragma omp single
 		{
-			printf("Processor::ProcessImage(): OMP using %d threads\n", numThreads);
+			printf("OMPProcessor::ProcessImage(): OMP using %d threads\n", numThreads);
 		}
 	}
 
@@ -458,7 +461,7 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 	//Start by removing rows.
 	RemoveMode removeMode = numRowsToRemove > 0 ? REMOVE_ROWS : REMOVE_COLS;
 
-	printf("Processor::ProcessImage(): Removing %d rows and %d columns\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+	printf("OMPProcessor::ProcessImage(): Removing %d rows and %d columns\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 	//While you have too many rows/columns:
 	while (rowsColsToRemove[REMOVE_ROWS] > 0 || rowsColsToRemove[REMOVE_COLS] > 0)
 	{
@@ -491,14 +494,14 @@ void Processor::ProcessImage(size_t numRowsToRemove, size_t numColsToRemove)
 		if (removeMode == REMOVE_ROWS)
 		{
 #if defined(_DEBUG)
-			//printf("Processor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			//printf("OMPProcessor::ProcessImage(): Removed a row, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			removeVec = IntVec2(0, 1);
 		}
 		else
 		{
 #if defined(_DEBUG)
-			//printf("Processor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
+			//printf("OMPProcessor::ProcessImage(): Removed a column, %d rows and %d columns remain\n", rowsColsToRemove[REMOVE_ROWS], rowsColsToRemove[REMOVE_COLS]);
 #endif
 			removeVec = IntVec2(1, 0);
 		}

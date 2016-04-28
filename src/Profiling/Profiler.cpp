@@ -69,6 +69,7 @@ void Profiler::PrintAll()
 		Seconds profileTime = profileTotalTimes[i];
 		printf("%s\t| %f\t| %f\n", profileNames[i], profileTime, profileTime / totalTime);
 	}
+	printf("%s\t| %f\t| %f\n", "Total", totalTime, totalTime / totalTime);
 }
 
 /**
@@ -90,4 +91,6 @@ void Profiler::PrintAllCSV(FILE* output)
 		Seconds profileTime = profileTotalTimes[i];
 		fprintf(output, "%s,%e,%e\n", profileNames[i], profileTime, profileTime / totalTime);
 	}
+	fprintf(output, "%s,%e,%e\n", "Total", totalTime, totalTime / totalTime);
+	fprintf(output, "\n");
 }

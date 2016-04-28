@@ -2,7 +2,7 @@
 #include "Proj6.h"
 #include "StandardIncludes.h"
 #include "SystemModules/TestMacros.h"
-#include "SystemModules/Processor.h"
+#include "SystemModules/OMPProcessor.h"
 #include "Profiling/Profiler.h"
 #include "Libraries/Graphics435.h"
 #include <stdio.h>
@@ -54,7 +54,7 @@ int main(int numArgs, char** args)
 	
 	//Do our work...
 	Profiler* profiler = new Profiler();
-	Processor* processor = new Processor(*image, *profiler);
+	OMPProcessor* processor = new OMPProcessor(*image, *profiler);
 	processor->ProcessImage(rowsToRemove, colsToRemove);
 
 	WriteImageBuffer(*image, outPath);

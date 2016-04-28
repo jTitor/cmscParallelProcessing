@@ -166,7 +166,8 @@
     <ClCompile Include="Profiling\Profiler.cpp" />
     <ClCompile Include="Proj6.cpp" />
     <ClCompile Include="SystemModules\BufferSpecializations.cpp" />
-    <ClCompile Include="SystemModules\Processor.cpp" />
+    <ClCompile Include="SystemModules\CUDAProcessor.cpp" />
+    <ClCompile Include="SystemModules\OMPProcessor.cpp" />
     <ClCompile Include="SystemModules\SeamTracebackElem.cpp" />
     <ClCompile Include="Time\Clock.cpp" />
   </ItemGroup>
@@ -190,7 +191,8 @@
     <ClInclude Include="Proj6.h" />
     <ClInclude Include="StandardIncludes.h" />
     <ClInclude Include="SystemModules\BufferSpecializations.h" />
-    <ClInclude Include="SystemModules\Processor.h" />
+    <ClInclude Include="SystemModules\CUDAProcessor.h" />
+    <ClInclude Include="SystemModules\OMPProcessor.h" />
     <ClInclude Include="SystemModules\SeamTracebackElem.h" />
     <ClInclude Include="SystemModules\TestMacros.h" />
     <ClInclude Include="Time\Clock.h" />
