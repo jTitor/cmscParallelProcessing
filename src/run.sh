@@ -7,12 +7,13 @@ timestamp() {
 
 tmpfile="temp$(timestamp)"
 timefile="temp-times$(timestamp)"
+logfile="log-times$(timestamp)"
 
 # compile code
-make clean
-make
+# make clean
+# make
 
-echo "Starting at $(timestamp)" >> times.txt
+echo "Starting at $(timestamp)" >> $timefile
 
 # run with varying number of processes
 procs=( 1, 2, 4, 8, 16 )
@@ -24,7 +25,9 @@ do
 	{ time ./Proj6 ../img/cameraman256.bmp ../img/cameraman250.bmp 250 250 $i ; } 2> $tmpfile
 	# convert time ouput to seconds
 	grep -i 'real' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile
-	grep -i 'user' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile
+	grep -i 'user' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile 
+	# keep original time output to make sure we arent doing stupid parsing
+	cat $tmpfile >> $logfile
 done
 
 # do it for lena (difficult task)
@@ -35,6 +38,7 @@ do
 	# convert time ouput to seconds
 	grep -i 'real' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile
 	grep -i 'user' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile
+	cat $tmpfile >> $logfile
 done
 
 echo "Ending at $(timestamp)" >> $timefile
