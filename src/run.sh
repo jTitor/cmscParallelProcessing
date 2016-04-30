@@ -13,10 +13,13 @@ logfile="log-times$(timestamp)"
 # make clean
 # make
 
+# start new time data file
+echo -n "Hostname: " > $timefile ; hostname >> $timefile
 echo "Starting at $(timestamp)" >> $timefile
 
 # run with varying number of processes
-procs=( 1, 2, 4, 8, 16 )
+procs=( 1, 2, 4, 8, 12, 16 )
+#procs=( 12 )
 
 # do it for cameraman (easy task)
 for i in "${procs[@]}"
@@ -26,8 +29,8 @@ do
 	# convert time ouput to seconds
 	grep -i 'real' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile
 	grep -i 'user' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile 
-	# keep original time output to make sure we arent doing stupid parsing
-	cat $tmpfile >> $logfile
+	# keep origcanal time output to make sure we arent doing stupid parsing
+	cat "$tmpfile" >> $logfile
 done
 
 # do it for lena (difficult task)
@@ -38,11 +41,14 @@ do
 	# convert time ouput to seconds
 	grep -i 'real' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile
 	grep -i 'user' $tmpfile | perl -lne '/([a-z\t ]*)([0-9]+)m([0-9\.]+)s/; print $1, (($2*60)+ $3);' >> $timefile
-	cat $tmpfile >> $logfile
+	cat "$tmpfile" >> $logfile
 done
 
 echo "Ending at $(timestamp)" >> $timefile
 
 # finish up
 mv "$timefile" "times_$(timestamp).txt"
+mv "$logfile" "$logfile.txt"
+mv profileData.csv "data/profileData$(timestamp).csv"
+
 rm "$tmpfile"
